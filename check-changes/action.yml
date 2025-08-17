@@ -10,20 +10,28 @@ inputs:
     description: 'Space-separated list of files to check'
 
 outputs:
-  changed:
-    description: 'Whether files have changed'
-    value: ${{ steps.check.outputs.changed }}
+  has_changes:
+    description: 'Whether files have changed (true/false)'
+    value: ${{ steps.check_changes.outputs.has_changes }}
 
 runs:
   using: 'composite'
   steps:
     - name: Check for changes
-      id: check
+      id: check_changes
       shell: bash
       run: |
-        if git diff --quiet ${{ inputs.files }}; then
-          echo "changed=false" >> $GITHUB_OUTPUT
+        FILES="${{ inputs.files }}"
+        
+        echo "::debug::Checking for changes in files: $FILES"
+        
+        # Use -- to separate revisions from pathspecs for safety.
+        DIFF_OUTPUT=$(git diff -- $FILES)
+        if [ -z "$DIFF_OUTPUT" ]; then
+          echo "::debug::No changes detected"
+          echo "has_changes=false" >> $GITHUB_OUTPUT
           exit 0
         fi
 
-        echo "changed=true" >> $GITHUB_OUTPUT
+        echo "::debug::Changes detected"
+        echo "has_changes=true" >> $GITHUB_OUTPUT
