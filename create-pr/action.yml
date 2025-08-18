@@ -57,7 +57,7 @@ runs:
         git add ${{ inputs.files }}
         git commit -m "${{ inputs.commit-message }}"
         git push --force origin "$BRANCH_NAME"
-        
+
         # Set branch name for next step
         echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
