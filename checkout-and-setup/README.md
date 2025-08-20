@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout and setup
-        uses: your-org/composite-toolbox/checkout-and-setup@v1
+        uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 

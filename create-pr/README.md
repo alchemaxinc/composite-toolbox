@@ -27,7 +27,7 @@ jobs:
           npm update
 
       - name: Create Pull Request
-        uses: your-org/composite-toolbox/create-pr@v1
+        uses: alchemaxinc/composite-toolbox/create-pr@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base-branch: 'main'
