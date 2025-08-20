@@ -1,5 +1,7 @@
 # Composite Toolbox
 
+![Composite Toolbox](./docs/logo.png)
+
 A collection of reusable GitHub Actions designed to simplify common workflow tasks. This repository serves as a toolbox of composite actions that you can easily integrate into your own workflows for convenience.
 
 ## 🎯 Purpose
