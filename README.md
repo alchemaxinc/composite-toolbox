@@ -4,7 +4,7 @@ A collection of reusable GitHub Actions designed to simplify common workflow tas
 
 ## 🎯 Purpose
 
-This repository is currently designed as a helper-repository to support [alchemaxinc/update-deps](https://github.com/alchemaxinc/update-deps), but contributions and usage are welcome for any project that could benefit from these common workflow patterns.
+This is a helper toolbox for [alchemaxinc/update-deps](https://github.com/alchemaxinc/update-deps); contributions and usage are welcome.
 
 ## 📦 Available Actions
 
