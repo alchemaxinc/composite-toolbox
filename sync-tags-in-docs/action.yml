@@ -112,7 +112,7 @@ runs:
           
           # Create pattern to match the repository usage in the file
           # Pattern matches: repo-path/some-path@any-version
-          PATTERN="${REPO_PATH}/${FILE_DIR}@"
+          PATTERN="${REPO_PATH}@"
           
           # Check if file contains the pattern
           if ! grep -q "$PATTERN" "$file"; then
