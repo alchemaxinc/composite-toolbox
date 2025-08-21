@@ -55,10 +55,17 @@ runs:
         GH_TOKEN: ${{ inputs.token }}
       run: |
         BRANCH_NAME="${{ inputs.branch-prefix }}-$(date +%Y%m%d)-${{ github.run_id }}"
+
         echo "::debug::Creating branch: $BRANCH_NAME"
         git checkout -b "$BRANCH_NAME"
+
+        echo "::debug::Adding files: ${{ inputs.files }}"
         git add ${{ inputs.files }}
+
+        echo "::debug::Committing changes with message: '${{ inputs.commit-message }}'"
         git commit -m "${{ inputs.commit-message }}"
+
+        echo "::debug::Pushing branch $BRANCH_NAME to origin"
         git push --force origin "$BRANCH_NAME"
 
         # Set branch name for next step
