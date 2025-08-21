@@ -40,7 +40,7 @@ runs:
         VERSION=${TAG#v}
 
         # Validate semantic versioning pattern
-        if [[ ! $VERSION =~ ^[0-9]+(\.[0-9]+)?(\.[0-9]+)?$ ]]; then
+        if [[ ! $VERSION =~ ^[0-9]+(\.[0-9]+(\.[0-9]+)?)?$ ]]; then
           echo "::error::Tag '$TAG' is not valid semantic versioning. Expected formats: v1, v1.0, v1.0.0"
           exit 1
         fi
@@ -64,7 +64,7 @@ runs:
           if [ -n "$FIND_ARGS" ]; then
             FIND_ARGS="$FIND_ARGS -o"
           fi
-          FIND_ARGS="$FIND_ARGS -name *$ext"
+          FIND_ARGS="$FIND_ARGS -name \*$ext"
         done
         
         # Find all matching files
@@ -125,7 +125,7 @@ runs:
           # Determine the appropriate version format based on existing usage
           # Extract current version to understand the format preference
           CURRENT_USAGE=$(grep -o "${PATTERN}[^[:space:]]*" "$file" | head -1)
-          CURRENT_VERSION=$(echo "$CURRENT_USAGE" | sed "s/.*@v*//")
+          CURRENT_VERSION=$(echo "$CURRENT_USAGE" | sed "s/.*@v\?//")
           
           echo "::debug::Current usage: $CURRENT_USAGE"
           echo "::debug::Current version: $CURRENT_VERSION"
