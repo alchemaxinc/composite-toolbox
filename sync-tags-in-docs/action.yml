@@ -23,7 +23,7 @@ inputs:
 
 outputs:
   files_updated:
-    description: 'Number of files that were updated'
+    description: 'Space-separated list of files that were updated'
     value: ${{ steps.update_tags.outputs.files_updated }}
 
 runs:
@@ -54,28 +54,30 @@ runs:
       run: |
         EXTENSIONS="${{ inputs.file-extensions }}"
         FOLDER="${{ inputs.folder }}"
-        
+
         echo "::debug::Scanning folder: $FOLDER"
         echo "::debug::File extensions: $EXTENSIONS"
-        
+
         # Build find command for multiple extensions
         FIND_ARGS=""
         for ext in $EXTENSIONS; do
           if [ -n "$FIND_ARGS" ]; then
             FIND_ARGS="$FIND_ARGS -o"
           fi
-          FIND_ARGS="$FIND_ARGS -name \*$ext"
+          FIND_ARGS="$FIND_ARGS -name \"*$ext\""
         done
-        
+
+        echo "::debug::Find command arguments: $FIND_ARGS"
+
         # Find all matching files
-        FILES=$(find "$FOLDER" -type f \( $FIND_ARGS \) 2>/dev/null || true)
-        
+        FILES=$(eval "find \"$FOLDER\" -type f \\( $FIND_ARGS \\)" 2>/dev/null || true)
+
         if [ -z "$FILES" ]; then
           echo "::notice::No files found with extensions: $EXTENSIONS"
           echo "files=" >> $GITHUB_OUTPUT
           exit 0
         fi
-        
+
         echo "::debug::Found files: $FILES"
         # Convert to space-separated list for easier processing
         FILES_LIST=$(echo "$FILES" | tr '\n' ' ')
@@ -88,31 +90,46 @@ runs:
         FILES="${{ steps.find_files.outputs.files }}"
         REPO_PATH="${{ inputs.github-repo-path }}"
         NEW_VERSION="${{ steps.validate_tag.outputs.normalized_version }}"
-        FILES_UPDATED=0
-        
+        FILES_UPDATED=""
+
         if [ -z "$FILES" ]; then
           echo "::notice::No files to process"
-          echo "files_updated=0" >> $GITHUB_OUTPUT
+          echo "files_updated=" >> $GITHUB_OUTPUT
           exit 0
         fi
-        
+
         echo "::debug::Processing files: $FILES"
         echo "::debug::Repository path: $REPO_PATH"
         echo "::debug::New version: $NEW_VERSION"
-        
+
         for file in $FILES; do
           if [ ! -f "$file" ]; then
             continue
           fi
           
           echo "::debug::Processing file: $file"
-          
+
           # Get the directory containing the file
           FILE_DIR=$(dirname "$file")
           
+          # Calculate relative path from FOLDER to FILE_DIR
+          if [ "$FILE_DIR" = "$FOLDER" ] || [ "$FILE_DIR" = "." ]; then
+            # File is in root folder, no relative path needed
+            RELATIVE_PATH=""
+          else
+            # Remove the FOLDER prefix and leading slash to get relative path
+            RELATIVE_PATH=$(echo "$FILE_DIR" | sed "s|^$FOLDER/\?||" | sed "s|^\./||")
+          fi
+          
           # Create pattern to match the repository usage in the file
-          # Pattern matches: repo-path/some-path@any-version
-          PATTERN="${REPO_PATH}@"
+          # Pattern matches: repo-path/relative-path@any-version or repo-path@any-version for root
+          if [ -n "$RELATIVE_PATH" ]; then
+            PATTERN="${REPO_PATH}/${RELATIVE_PATH}@"
+          else
+            PATTERN="${REPO_PATH}@"
+          fi
+          
+          echo "::debug::Using pattern: $PATTERN"
           
           # Check if file contains the pattern
           if ! grep -q "$PATTERN" "$file"; then
@@ -153,12 +170,12 @@ runs:
           # Check if file was actually modified
           if ! cmp -s "$file" "$file.bak"; then
             echo "::notice::Updated tags in $file to $NEW_TAG_VERSION"
-            FILES_UPDATED=$((FILES_UPDATED + 1))
+            FILES_UPDATED="$FILES_UPDATED $file"
           fi
-          
+
           # Clean up backup file
           rm -f "$file.bak"
         done
-        
-        echo "::notice::Updated $FILES_UPDATED files"
+
+        echo "::notice::Updated files: $FILES_UPDATED"
         echo "files_updated=$FILES_UPDATED" >> $GITHUB_OUTPUT
