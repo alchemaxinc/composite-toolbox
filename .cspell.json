@@ -1,0 +1,11 @@
+{
+  "language": "en",
+  "words": ["alchemaxinc"],
+  "files": ["*.md", "*/**/*.md"],
+  "ignoreWords": [],
+  "ignorePaths": [],
+  "dictionaries": [],
+  "flagWords": [],
+  "allowCompoundWords": true,
+  "caseSensitive": false
+}
