@@ -1,0 +1,164 @@
+name: 'Sync Tags in Documentation'
+
+description: 'Update GitHub action tags in documentation files to match the current version'
+
+inputs:
+  file-extensions:
+    required: false
+    default: '.md'
+    description: 'Space-separated list of file extensions to scan (e.g., ".md .txt")'
+
+  github-repo-path:
+    required: true
+    description: 'GitHub repository path (e.g., "alchemaxinc/update-deps")'
+
+  folder:
+    required: false
+    default: '.'
+    description: 'Folder to scan for files (defaults to repository root)'
+
+  current-tag:
+    required: true
+    description: 'Current GitHub tag to update to (must follow semantic versioning)'
+
+outputs:
+  files_updated:
+    description: 'Number of files that were updated'
+    value: ${{ steps.update_tags.outputs.files_updated }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate semantic version tag
+      id: validate_tag
+      shell: bash
+      run: |
+        TAG="${{ inputs.current-tag }}"
+        echo "::debug::Validating tag: $TAG"
+
+        # Remove 'v' prefix if present
+        VERSION=${TAG#v}
+
+        # Validate semantic versioning pattern
+        if [[ ! $VERSION =~ ^[0-9]+(\.[0-9]+)?(\.[0-9]+)?$ ]]; then
+          echo "::error::Tag '$TAG' is not valid semantic versioning. Expected formats: v1, v1.0, v1.0.0"
+          exit 1
+        fi
+
+        echo "::debug::Tag validation passed"
+        echo "normalized_version=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Find files to scan
+      id: find_files
+      shell: bash
+      run: |
+        EXTENSIONS="${{ inputs.file-extensions }}"
+        FOLDER="${{ inputs.folder }}"
+        
+        echo "::debug::Scanning folder: $FOLDER"
+        echo "::debug::File extensions: $EXTENSIONS"
+        
+        # Build find command for multiple extensions
+        FIND_ARGS=""
+        for ext in $EXTENSIONS; do
+          if [ -n "$FIND_ARGS" ]; then
+            FIND_ARGS="$FIND_ARGS -o"
+          fi
+          FIND_ARGS="$FIND_ARGS -name *$ext"
+        done
+        
+        # Find all matching files
+        FILES=$(find "$FOLDER" -type f \( $FIND_ARGS \) 2>/dev/null || true)
+        
+        if [ -z "$FILES" ]; then
+          echo "::notice::No files found with extensions: $EXTENSIONS"
+          echo "files=" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        echo "::debug::Found files: $FILES"
+        # Convert to space-separated list for easier processing
+        FILES_LIST=$(echo "$FILES" | tr '\n' ' ')
+        echo "files=$FILES_LIST" >> $GITHUB_OUTPUT
+
+    - name: Update tags in documentation
+      id: update_tags
+      shell: bash
+      run: |
+        FILES="${{ steps.find_files.outputs.files }}"
+        REPO_PATH="${{ inputs.github-repo-path }}"
+        NEW_VERSION="${{ steps.validate_tag.outputs.normalized_version }}"
+        FILES_UPDATED=0
+        
+        if [ -z "$FILES" ]; then
+          echo "::notice::No files to process"
+          echo "files_updated=0" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        echo "::debug::Processing files: $FILES"
+        echo "::debug::Repository path: $REPO_PATH"
+        echo "::debug::New version: $NEW_VERSION"
+        
+        for file in $FILES; do
+          if [ ! -f "$file" ]; then
+            continue
+          fi
+          
+          echo "::debug::Processing file: $file"
+          
+          # Get the directory containing the file
+          FILE_DIR=$(dirname "$file")
+          
+          # Create pattern to match the repository usage in the file
+          # Pattern matches: repo-path/some-path@any-version
+          PATTERN="${REPO_PATH}/${FILE_DIR}@"
+          
+          # Check if file contains the pattern
+          if ! grep -q "$PATTERN" "$file"; then
+            echo "::debug::No matching pattern found in $file"
+            continue
+          fi
+          
+          echo "::debug::Found pattern in $file"
+          
+          # Determine the appropriate version format based on existing usage
+          # Extract current version to understand the format preference
+          CURRENT_USAGE=$(grep -o "${PATTERN}[^[:space:]]*" "$file" | head -1)
+          CURRENT_VERSION=$(echo "$CURRENT_USAGE" | sed "s/.*@v*//")
+          
+          echo "::debug::Current usage: $CURRENT_USAGE"
+          echo "::debug::Current version: $CURRENT_VERSION"
+          
+          # Determine new version format based on current format
+          NEW_TAG_VERSION=""
+          if [[ $CURRENT_VERSION =~ ^[0-9]+$ ]]; then
+            # Current is major only (e.g., "1")
+            NEW_MAJOR=$(echo "$NEW_VERSION" | cut -d. -f1)
+            NEW_TAG_VERSION="v$NEW_MAJOR"
+          elif [[ $CURRENT_VERSION =~ ^[0-9]+\.[0-9]+$ ]]; then
+            # Current is major.minor (e.g., "1.0")
+            NEW_MAJOR_MINOR=$(echo "$NEW_VERSION" | cut -d. -f1-2)
+            NEW_TAG_VERSION="v$NEW_MAJOR_MINOR"
+          else
+            # Current is full version or other format, use full version
+            NEW_TAG_VERSION="v$NEW_VERSION"
+          fi
+          
+          echo "::debug::New tag version: $NEW_TAG_VERSION"
+          
+          # Replace all occurrences of the pattern with the new version
+          sed -i.bak "s|${PATTERN}[^[:space:]]*|${PATTERN}${NEW_TAG_VERSION}|g" "$file"
+          
+          # Check if file was actually modified
+          if ! cmp -s "$file" "$file.bak"; then
+            echo "::notice::Updated tags in $file to $NEW_TAG_VERSION"
+            FILES_UPDATED=$((FILES_UPDATED + 1))
+          fi
+          
+          # Clean up backup file
+          rm -f "$file.bak"
+        done
+        
+        echo "::notice::Updated $FILES_UPDATED files"
+        echo "files_updated=$FILES_UPDATED" >> $GITHUB_OUTPUT
