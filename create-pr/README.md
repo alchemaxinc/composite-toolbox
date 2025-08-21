@@ -2,8 +2,9 @@
 
 This GitHub Action creates a new branch, commits specified files, and opens a pull request with the changes.
 
-> [!IMPORTANT]  
-> This action creates a unique branch name using timestamp and run ID to avoid conflicts. It requires the GitHub CLI to be available in the runner environment.
+> [!IMPORTANT]
+> This action creates a unique branch name using timestamp and run ID to avoid conflicts. It requires the GitHub CLI to
+> be available in the runner environment.
 
 ## :rocket: Usage
 
@@ -43,15 +44,15 @@ jobs:
 
 ## :gear: Inputs
 
-| Input            | Description                            | Required           | Default               |
-| ---------------- | -------------------------------------- | ------------------ | --------------------- |
-| `token`          | GitHub token for authentication        | :white_check_mark: | -                     |
-| `base-branch`    | Base branch for the pull request       | :white_check_mark: | `develop`             |
-| `branch-prefix`  | Prefix for the new branch name         | :white_check_mark: | `update-dependencies` |
-| `files`          | Files to commit (space-separated)      | :white_check_mark: | -                     |
-| `commit-message` | Commit message                         | :white_check_mark: | `''`                  |
-| `pr-title`       | Pull request title                     | :white_check_mark: | `''`                  |
-| `pr-body`        | Pull request body (Markdown supported) | :white_check_mark: | `''`                  |
+| Input            | Description                            | Required           |
+| ---------------- | -------------------------------------- | ------------------ |
+| `token`          | GitHub token for authentication        | :white_check_mark: |
+| `base-branch`    | Base branch for the pull request       | :white_check_mark: |
+| `branch-prefix`  | Prefix for the new branch name         | :white_check_mark: |
+| `files`          | Files to commit (space-separated)      | :white_check_mark: |
+| `commit-message` | Commit message                         | :white_check_mark: |
+| `pr-title`       | Pull request title                     | :white_check_mark: |
+| `pr-body`        | Pull request body (Markdown supported) | :white_check_mark: |
 
 ## :warning: Prerequisites
 

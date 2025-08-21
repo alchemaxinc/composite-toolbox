@@ -12,13 +12,11 @@ inputs:
     required: true
     type: string
     description: 'Base branch for PR'
-    default: 'develop'
 
   branch-prefix:
     required: true
     type: string
     description: 'Prefix for new branch'
-    default: 'update-dependencies'
 
   files:
     required: true
@@ -29,23 +27,28 @@ inputs:
     required: true
     type: string
     description: 'Message the commit will have'
-    default: ''
 
   pr-title:
     required: true
     type: string
     description: 'Title of the pull request'
-    default: ''
 
   pr-body:
     required: true
     type: string
     description: 'The Markdown-supported body for the Github pull request'
-    default: ''
 
 runs:
   using: 'composite'
   steps:
+    - name: Validate inputs
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.files }}" ] || [ "${{ inputs.files }}" = "" ]; then
+          echo "::error::The 'files' input cannot be empty. It represents files to add with 'git add'. If you meant to add all files, use '.' as the files input."
+          exit 1
+        fi
+
     - name: Create and push branch
       shell: bash
       env:
