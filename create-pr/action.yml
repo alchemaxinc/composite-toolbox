@@ -53,17 +53,19 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
+        FILES_TO_ADD: ${{ inputs.files }}
+        COMMIT_MESSAGE: ${{ inputs.commit-message }}
       run: |
         BRANCH_NAME="${{ inputs.branch-prefix }}-$(date +%Y%m%d)-${{ github.run_id }}"
 
         echo "::debug::Creating branch: $BRANCH_NAME"
         git checkout -b "$BRANCH_NAME"
 
-        echo "::debug::Adding files: ${{ inputs.files }}"
-        git add ${{ inputs.files }}
+        echo "::debug::Adding files: $FILES_TO_ADD"
+        git add $FILES_TO_ADD
 
-        echo "::debug::Committing changes with message: '${{ inputs.commit-message }}'"
-        git commit -m "${{ inputs.commit-message }}"
+        echo "::debug::Committing changes with message: '$COMMIT_MESSAGE'"
+        git commit -m "$COMMIT_MESSAGE"
 
         echo "::debug::Pushing branch $BRANCH_NAME to origin"
         git push --force origin "$BRANCH_NAME"
@@ -75,10 +77,13 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
+        PR_TITLE: ${{ inputs.pr-title }}
+        PR_BODY: ${{ inputs.pr-body }}
+        BASE_BRANCH: ${{ inputs.base-branch }}
       run: |
-        echo "::debug::Creating pull request from $BRANCH_NAME to ${{ inputs.base-branch }}"
+        echo "::debug::Creating pull request from $BRANCH_NAME to $BASE_BRANCH"
         gh pr create \
-          --title "${{ inputs.pr-title }}" \
-          --body "${{ inputs.pr-body }}" \
+          --title "$PR_TITLE" \
+          --body "$PR_BODY" \
           --head "$BRANCH_NAME" \
-          --base "${{ inputs.base-branch }}"
+          --base "$BASE_BRANCH"

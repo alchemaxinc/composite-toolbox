@@ -165,7 +165,7 @@ runs:
           echo "::debug::New tag version: $NEW_TAG_VERSION"
           
           # Replace all occurrences of the pattern with the new version
-          sed -i.bak "s|${PATTERN}[^[:space:])]]*|${PATTERN}${NEW_TAG_VERSION}|g" "$file"
+          sed -i.bak "s|${PATTERN}[^[:space:])]]*|${PATTERN%@}@${NEW_TAG_VERSION}|g" "$file"
           
           # Check if file was actually modified
           if ! cmp -s "$file" "$file.bak"; then
