@@ -3,7 +3,8 @@
 This GitHub Action checks if specified files have changes in the working directory using git diff.
 
 > [!IMPORTANT]  
-> This action only checks for uncommitted changes in the working directory. It does not compare between different commits or branches.
+> This action only checks for uncommitted changes in the working directory. It does not compare between different
+> commits or branches.
 
 ## :rocket: Usage
 
@@ -35,9 +36,9 @@ jobs:
 
 ## :gear: Inputs
 
-| Input   | Description                            | Required           | Default |
-| ------- | -------------------------------------- | ------------------ | ------- |
-| `files` | Space-separated list of files to check | :white_check_mark: | `''`    |
+| Input   | Description                                                                         | Required | Default |
+| ------- | ----------------------------------------------------------------------------------- | -------- | ------- |
+| `files` | Space-separated list of files to check; if left empty, checks the entire repository | :x:      | `''`    |
 
 ## :outbox_tray: Outputs
 
