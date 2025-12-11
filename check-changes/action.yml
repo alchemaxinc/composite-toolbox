@@ -4,10 +4,9 @@ description: 'Check if specified files have changes'
 
 inputs:
   files:
-    required: true
-    type: string
+    required: false
     default: ''
-    description: 'Space-separated list of files to check'
+    description: 'Space-separated list of files to check, if left empty, will check the entire repository'
 
 outputs:
   has_changes:
