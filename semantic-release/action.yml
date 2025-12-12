@@ -8,11 +8,6 @@ inputs:
     description: 'GitHub token for authentication'
     default: ${{ github.token }}
 
-  npm-cache-key:
-    required: false
-    description: 'Custom cache key for npm dependencies'
-    default: "npm-sr-${{ runner.os }}-${{ hashFiles('**/go.mod') }}"
-
   enable-backmerge:
     required: false
     description: 'Enable backmerge from main to develop after release'
@@ -43,7 +38,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.npm-global
-        key: ${{ inputs.npm-cache-key }}
+        key: "npm-sr-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}"
         restore-keys: |
           npm-sr-${{ runner.os }}-
 
