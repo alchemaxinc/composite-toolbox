@@ -2,7 +2,7 @@
   "language": "en",
   "words": ["alchemaxinc"],
   "files": ["*.md", "*/**/*.md"],
-  "ignoreWords": [],
+  "ignoreWords": ["releaserc"],
   "ignorePaths": [],
   "dictionaries": [],
   "flagWords": [],
