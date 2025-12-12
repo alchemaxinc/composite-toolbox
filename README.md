@@ -13,6 +13,7 @@ This is a helper toolbox for [alchemaxinc/update-deps](https://github.com/alchem
 - **[check-changes](./check-changes/)** - Check if specified files have changes in the working directory
 - **[checkout-and-setup](./checkout-and-setup/)** - Common repository checkout and Git configuration in one step
 - **[create-pr](./create-pr/)** - Create a new branch, commit files, and open a pull request
+- **[semantic-release](./semantic-release/)** - Run semantic-release with caching and optional backmerge support
 
 ## 🤝 Contributing
 

@@ -1,0 +1,83 @@
+name: 'Semantic Release'
+
+description: 'Run semantic-release with caching and optional backmerge support'
+
+inputs:
+  token:
+    required: true
+    description: 'GitHub token for authentication'
+    default: ${{ github.token }}
+
+  npm-cache-key:
+    required: false
+    description: 'Custom cache key for npm dependencies'
+    default: "npm-sr-${{ runner.os }}-${{ hashFiles('**/go.mod') }}"
+
+  enable-backmerge:
+    required: false
+    description: 'Enable backmerge from main to develop after release'
+    default: 'false'
+
+  backmerge-target-branch:
+    required: false
+    description: 'Target branch for backmerge (only used when enable-backmerge is true)'
+    default: 'develop'
+
+  source-branch:
+    required: false
+    description: 'Source branch for semantic-release (typically main)'
+    default: 'main'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+        token: ${{ inputs.token }}
+
+    - name: Cache semantic-release
+      id: cache-sr
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm-global
+        key: ${{ inputs.npm-cache-key }}
+        restore-keys: |
+          npm-sr-${{ runner.os }}-
+
+    - name: Install semantic-release and plugins
+      if: steps.cache-sr.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        npm config set prefix ~/.npm-global
+        npm install -g \
+          semantic-release \
+          @semantic-release/commit-analyzer \
+          @semantic-release/release-notes-generator \
+          @semantic-release/npm \
+          @semantic-release/github
+
+    - name: Add ~/.npm-global/bin to PATH
+      shell: bash
+      run: echo "~/.npm-global/bin" >> $GITHUB_PATH
+
+    - name: Run semantic-release
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: semantic-release
+
+    - name: Backmerge to develop
+      if: inputs.enable-backmerge == 'true' && github.ref == format('refs/heads/{0}', inputs.source-branch)
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git fetch origin ${{ inputs.backmerge-target-branch }}
+        git checkout ${{ inputs.backmerge-target-branch }}
+        git merge ${{ inputs.source-branch }} --no-ff -m "chore: backmerge ${{ inputs.source-branch }} after release"
+        git push origin ${{ inputs.backmerge-target-branch }}
