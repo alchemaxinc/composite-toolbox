@@ -38,7 +38,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.npm-global
-        key: "npm-sr-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}"
+        key: "npm-sr-${{ runner.os }}-${{ hashFiles('*releaserc*', '**/package-lock.json', '**/package.json') }}"
         restore-keys: |
           npm-sr-${{ runner.os }}-
 
@@ -47,12 +47,20 @@ runs:
       shell: bash
       run: |
         npm config set prefix ~/.npm-global
-        npm install -g \
-          semantic-release \
-          @semantic-release/commit-analyzer \
-          @semantic-release/release-notes-generator \
-          @semantic-release/npm \
-          @semantic-release/github
+
+        # Extract plugin names from .releaserc
+        PLUGINS=$(jq -r '.plugins[] | if type == "string" then . else .[0] end' .releaserc* 2>/dev/null || echo "")
+
+        # Build the npm install command with semantic-release and all plugins
+        INSTALL_CMD="npm install -g semantic-release"
+        if [ -n "$PLUGINS" ]; then
+          while IFS= read -r plugin; do
+            INSTALL_CMD="$INSTALL_CMD $plugin"
+          done <<< "$PLUGINS"
+        fi
+
+        # Execute the install command
+        eval "$INSTALL_CMD"
 
     - name: Add ~/.npm-global/bin to PATH
       shell: bash
