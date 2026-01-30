@@ -38,6 +38,11 @@ inputs:
     type: string
     description: 'The Markdown-supported body for the Github pull request'
 
+outputs:
+  pr_number:
+    description: 'Number of the created pull request'
+    value: ${{ steps.create_pr.outputs.pr_number }}
+
 runs:
   using: 'composite'
   steps:
@@ -74,6 +79,7 @@ runs:
         echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
     - name: Create Pull Request
+      id: create_pr
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
@@ -82,8 +88,11 @@ runs:
         BASE_BRANCH: ${{ inputs.base-branch }}
       run: |
         echo "::debug::Creating pull request from $BRANCH_NAME to $BASE_BRANCH"
-        gh pr create \
+        PR_NUMBER=$(gh pr create \
           --title "$PR_TITLE" \
           --body "$PR_BODY" \
           --head "$BRANCH_NAME" \
-          --base "$BASE_BRANCH"
+          --base "$BASE_BRANCH" \
+          --json number \
+          --jq .number)
+        echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
