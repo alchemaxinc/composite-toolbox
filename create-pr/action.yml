@@ -88,11 +88,13 @@ runs:
         BASE_BRANCH: ${{ inputs.base-branch }}
       run: |
         echo "::debug::Creating pull request from $BRANCH_NAME to $BASE_BRANCH"
-        PR_NUMBER=$(gh pr create \
+        PR_URL=$(gh pr create \
           --title "$PR_TITLE" \
           --body "$PR_BODY" \
           --head "$BRANCH_NAME" \
-          --base "$BASE_BRANCH" \
-          --json number \
-          --jq .number)
+          --base "$BASE_BRANCH")
+
+        echo "::debug::Pull request created at: $PR_URL"
+
+        PR_NUMBER=$(gh pr view "$PR_URL" --json number --jq .number)
         echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
