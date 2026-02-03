@@ -3,8 +3,7 @@
 This GitHub Action creates a new branch, commits specified files, and opens a pull request with the changes.
 
 > [!IMPORTANT]
-> This action creates a unique branch name using timestamp and run ID to avoid conflicts. It requires the GitHub CLI to
-> be available in the runner environment.
+> This action creates a branch name by combining the `branch-prefix` with either a custom `branch-postfix` (if provided) or a unique timestamp and run ID (to avoid conflicts). It requires the GitHub CLI to be available in the runner environment.
 
 ## :rocket: Usage
 
@@ -42,17 +41,37 @@ jobs:
             This PR contains automated updates.
 ```
 
+### With Custom Branch Name
+
+```yaml
+- name: Create Pull Request with Custom Branch
+  uses: alchemaxinc/composite-toolbox/create-pr@v1
+  with:
+    token: ${{ secrets.GITHUB_TOKEN }}
+    base-branch: 'main'
+    branch-prefix: 'feature'
+    branch-postfix: 'my-custom-feature' # Branch will be named: feature-my-custom-feature
+    files: 'package.json package-lock.json'
+    commit-message: 'feat: add new feature'
+    pr-title: 'Add New Feature'
+    pr-body: |
+      ## ✨ New Feature
+
+      This PR adds a new feature.
+```
+
 ## :gear: Inputs
 
-| Input            | Description                            | Required           |
-| ---------------- | -------------------------------------- | ------------------ |
-| `token`          | GitHub token for authentication        | :white_check_mark: |
-| `base-branch`    | Base branch for the pull request       | :white_check_mark: |
-| `branch-prefix`  | Prefix for the new branch name         | :white_check_mark: |
-| `files`          | Files to commit (space-separated)      | :white_check_mark: |
-| `commit-message` | Commit message                         | :white_check_mark: |
-| `pr-title`       | Pull request title                     | :white_check_mark: |
-| `pr-body`        | Pull request body (Markdown supported) | :white_check_mark: |
+| Input            | Description                                                                       | Required           |
+| ---------------- | --------------------------------------------------------------------------------- | ------------------ |
+| `token`          | GitHub token for authentication                                                   | :white_check_mark: |
+| `base-branch`    | Base branch for the pull request                                                  | :white_check_mark: |
+| `branch-prefix`  | Prefix for the new branch name                                                    | :white_check_mark: |
+| `branch-postfix` | Postfix for the new branch name (defaults to `YYYYMMDD-{run_id}` if not provided) | :x:                |
+| `files`          | Files to commit (space-separated)                                                 | :white_check_mark: |
+| `commit-message` | Commit message                                                                    | :white_check_mark: |
+| `pr-title`       | Pull request title                                                                | :white_check_mark: |
+| `pr-body`        | Pull request body (Markdown supported)                                            | :white_check_mark: |
 
 ## :warning: Prerequisites
 
