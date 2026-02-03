@@ -4,30 +4,15 @@ inputs:
   token:
     description: 'GITHUB_TOKEN or a `repo` scoped Personal Access Token (PAT)'
     default: ${{ github.token }}
-
   repository:
     description: 'The target GitHub repository containing the pull request'
     default: ${{ github.repository }}
-
   pull-request-number:
     description: 'The number of the target pull request'
     required: true
-
   merge-method:
-    description: 'The merge method to use: `merge`, `rebase`, or `squash`'
+    description: 'The merge method to use. `merge`, `rebase` or `squash`.'
     default: merge
-
-  wait-for-checks:
-    description: 'Wait for required status checks to be registered before enabling auto-merge'
-    default: 'true'
-
-  check-timeout:
-    description: 'Maximum time in seconds to wait for required checks to appear'
-    default: '60'
-
-  poll-interval:
-    description: 'Time in seconds to wait between polling attempts for status checks'
-    default: '2'
 runs:
   using: composite
   steps:
@@ -35,40 +20,6 @@ runs:
       id: lowercase
       shell: bash
       run: echo merge-method=$(echo "${{ inputs.merge-method }}" | tr '[:upper:]' '[:lower:]') >> $GITHUB_OUTPUT
-
-    - name: Wait for required checks
-      if: inputs.wait-for-checks == 'true'
-      shell: bash
-      env:
-        GH_TOKEN: ${{ inputs.token }}
-        REPO: ${{ inputs.repository }}
-        PR_NUMBER: ${{ inputs.pull-request-number }}
-        TIMEOUT: ${{ inputs.check-timeout }}
-        POLL_INTERVAL: ${{ inputs.poll-interval }}
-      run: |
-        #!/bin/bash
-        set -e
-
-        elapsed=0
-
-        while [ "$elapsed" -lt "$TIMEOUT" ]; do
-          # Query GitHub API for PR status checks
-          result=$(gh api repos/"$REPO"/pulls/"$PR_NUMBER" \
-            --jq '.statusCheckRollup | if . == null then "none" elif any(.conclusion == null) then "pending" else "complete" end' \
-            2>/dev/null)
-          
-          # If checks are pending or complete, required checks have been registered
-          if [ "$result" = "pending" ] || [ "$result" = "complete" ]; then
-            echo "✓ Required status checks detected on PR #$PR_NUMBER"
-            exit 0
-          fi
-          
-          echo "⏳ Waiting for required checks... ($elapsed/$TIMEOUT seconds)"
-          sleep "$POLL_INTERVAL"
-          elapsed=$((elapsed + POLL_INTERVAL))
-        done
-
-        echo "⚠ Timeout waiting for checks after ${TIMEOUT}s. Proceeding with auto-merge."
 
     - name: Enable automerge
       shell: bash
