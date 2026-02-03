@@ -18,6 +18,12 @@ inputs:
     type: string
     description: 'Prefix for new branch'
 
+  branch-postfix:
+    required: false
+    type: string
+    description: 'Postfix for new branch, defaults to a unique string on each run to avoid overwrites of existing branches'
+    default: ''
+
   files:
     required: true
     type: string
@@ -61,7 +67,11 @@ runs:
         FILES_TO_ADD: ${{ inputs.files }}
         COMMIT_MESSAGE: ${{ inputs.commit-message }}
       run: |
-        BRANCH_NAME="${{ inputs.branch-prefix }}-$(date +%Y%m%d)-${{ github.run_id }}"
+        if [ -z "${{ inputs.branch-postfix }}" ]; then
+          BRANCH_NAME="${{ inputs.branch-prefix }}-$(date +%Y%m%d)-${{ github.run_id }}"
+        else
+          BRANCH_NAME="${{ inputs.branch-prefix }}-${{ inputs.branch-postfix }}"
+        fi
 
         echo "::debug::Creating branch: $BRANCH_NAME"
         git checkout -b "$BRANCH_NAME"
