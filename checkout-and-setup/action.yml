@@ -8,6 +8,11 @@ inputs:
     description: 'GitHub token'
     default: ${{ github.token }}
 
+  app-slug:
+    required: false
+    description: 'GitHub App slug (e.g., my-app). If provided, configures git as the app bot instead of default user'
+    default: ''
+
 runs:
   using: 'composite'
   steps:
@@ -16,7 +21,19 @@ runs:
       with:
         token: ${{ inputs.token }}
 
-    - name: Configure Git
+    - name: Configure git (as an app)
+      if: ${{ inputs.app-slug != '' }}
+      shell: bash
+      run: |
+        APP_SLUG="${{ inputs.app-slug }}"
+        bot_login="${APP_SLUG}[bot]"
+        # URL-encode [] as %5B %5D
+        bot_id=$(curl -fsSL "https://api.github.com/users/${APP_SLUG}%5Bbot%5D" | jq -r .id)
+        git config --local user.name "$bot_login"
+        git config --local user.email "${bot_id}+${bot_login}@users.noreply.github.com"
+
+    - name: Configure git (as default actions user)
+      if: ${{ inputs.app-slug == '' }}
       shell: bash
       run: |
         git config --local user.email "action@github.com"
