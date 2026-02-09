@@ -7,6 +7,8 @@ This GitHub Action performs common repository checkout and Git configuration tas
 
 ## :rocket: Usage
 
+### Basic Usage
+
 ```yaml
 name: Setup Repository
 on:
@@ -29,11 +31,37 @@ jobs:
           # Your workflow steps here
 ```
 
+### Using with GitHub App Bot
+
+```yaml
+name: Setup with App Bot
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout and setup as app bot
+        uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          app-slug: my-github-app
+
+      - name: Make changes as bot
+        run: |
+          echo "Repository is configured with app bot credentials"
+          # Commits will be attributed to my-github-app[bot]
+```
+
 ## :gear: Inputs
 
-| Input   | Description                     | Required | Default               |
-| ------- | ------------------------------- | -------- | --------------------- |
-| `token` | GitHub token for authentication | :x:      | `${{ github.token }}` |
+| Input      | Description                                                                                     | Required | Default               |
+| ---------- | ----------------------------------------------------------------------------------------------- | -------- | --------------------- |
+| `token`    | GitHub token for authentication                                                                 | :x:      | `${{ github.token }}` |
+| `app-slug` | GitHub App slug (e.g., `my-app`). If provided, configures git as the app bot instead of default | :x:      | `''`                  |
 
 ## :warning: Prerequisites
 
