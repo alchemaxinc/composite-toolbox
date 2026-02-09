@@ -56,12 +56,39 @@ jobs:
           # Commits will be attributed to my-github-app[bot]
 ```
 
+### Using with Full History
+
+```yaml
+name: Setup with Full History
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with full history
+        uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          shallow: false
+
+      - name: Work with git history
+        run: |
+          echo "Full git history and tags are available"
+          git log --oneline | head -10
+          git tag -l
+```
+
 ## :gear: Inputs
 
 | Input      | Description                                                                                     | Required | Default               |
 | ---------- | ----------------------------------------------------------------------------------------------- | -------- | --------------------- |
 | `token`    | GitHub token for authentication                                                                 | :x:      | `${{ github.token }}` |
 | `app-slug` | GitHub App slug (e.g., `my-app`). If provided, configures git as the app bot instead of default | :x:      | `''`                  |
+| `shallow`  | If `true`, performs shallow checkout. If `false`, fetches full history with tags                | :x:      | `'true'`              |
 
 ## :warning: Prerequisites
 
