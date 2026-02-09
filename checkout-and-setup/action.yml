@@ -13,13 +13,27 @@ inputs:
     description: 'GitHub App slug (e.g., my-app). If provided, configures git as the app bot instead of default user'
     default: ''
 
+  shallow:
+    required: false
+    description: 'If true, performs shallow checkout. If false, fetches full history with tags'
+    default: 'true'
+
 runs:
   using: 'composite'
   steps:
-    - name: Checkout repository
-      uses: actions/checkout@v5
+    - name: Checkout repository (shallow)
+      if: ${{ inputs.shallow == 'true' }}
+      uses: actions/checkout@v6
       with:
         token: ${{ inputs.token }}
+
+    - name: Checkout repository (full history)
+      if: ${{ inputs.shallow == 'false' }}
+      uses: actions/checkout@v6
+      with:
+        token: ${{ inputs.token }}
+        fetch-depth: 0
+        fetch-tags: true
 
     - name: Configure git (as an app)
       if: ${{ inputs.app-slug != '' }}
