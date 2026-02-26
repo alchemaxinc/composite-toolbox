@@ -27,7 +27,7 @@ runs:
   using: 'composite'
   steps:
     - name: Checkout code
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
         fetch-tags: true
@@ -35,7 +35,7 @@ runs:
 
     - name: Cache semantic-release
       id: cache-sr
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.npm-global
         key: "npm-sr-${{ runner.os }}-${{ hashFiles('*releaserc*', '**/package-lock.json', '**/package.json') }}"
@@ -51,16 +51,18 @@ runs:
         # Extract plugin names from .releaserc
         PLUGINS=$(jq -r '.plugins[] | if type == "string" then . else .[0] end' .releaserc* 2>/dev/null || echo "")
 
-        # Build the npm install command with semantic-release and all plugins
-        INSTALL_CMD="npm install -g semantic-release"
+        # Build install arguments safely without eval
+        INSTALL_ARGS="semantic-release"
         if [ -n "$PLUGINS" ]; then
           while IFS= read -r plugin; do
-            INSTALL_CMD="$INSTALL_CMD $plugin"
+            # Skip empty lines
+            [ -z "$plugin" ] && continue
+            INSTALL_ARGS="$INSTALL_ARGS $plugin"
           done <<< "$PLUGINS"
         fi
 
-        # Execute the install command
-        eval "$INSTALL_CMD"
+        # Install using xargs to avoid eval
+        echo "$INSTALL_ARGS" | xargs npm install -g
 
     - name: Add ~/.npm-global/bin to PATH
       shell: bash
@@ -77,10 +79,18 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
+        TARGET_BRANCH: ${{ inputs.backmerge-target-branch }}
+        SOURCE_BRANCH: ${{ inputs.source-branch }}
       run: |
-        git config --global user.name 'github-actions[bot]'
-        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-        git fetch origin ${{ inputs.backmerge-target-branch }}
-        git checkout ${{ inputs.backmerge-target-branch }}
-        git merge ${{ inputs.source-branch }} --no-ff -m "chore: backmerge ${{ inputs.source-branch }} after release"
-        git push origin ${{ inputs.backmerge-target-branch }}
+        git config --local user.name 'github-actions[bot]'
+        git config --local user.email 'github-actions[bot]@users.noreply.github.com'
+        git fetch origin "$TARGET_BRANCH"
+        git checkout "$TARGET_BRANCH"
+
+        if ! git merge "$SOURCE_BRANCH" --no-ff -m "chore: backmerge $SOURCE_BRANCH after release"; then
+          echo "::error::Merge conflict detected when backmerging $SOURCE_BRANCH into $TARGET_BRANCH. Please resolve manually."
+          git merge --abort
+          exit 1
+        fi
+
+        git push origin "$TARGET_BRANCH"

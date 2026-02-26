@@ -16,13 +16,19 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Lowercase
-      id: lowercase
+    - name: Validate and enable automerge
       shell: bash
-      run: echo merge-method=$(echo "${{ inputs.merge-method }}" | tr '[:upper:]' '[:lower:]') >> $GITHUB_OUTPUT
-
-    - name: Enable automerge
-      shell: bash
-      run: gh pr merge -R "${{ inputs.repository }}" --${{ steps.lowercase.outputs.merge-method }} --auto "${{ inputs.pull-request-number }}"
       env:
         GH_TOKEN: ${{ inputs.token }}
+        REPOSITORY: ${{ inputs.repository }}
+        PR_NUMBER: ${{ inputs.pull-request-number }}
+        MERGE_METHOD: ${{ inputs.merge-method }}
+      run: |
+        METHOD=$(echo "$MERGE_METHOD" | tr '[:upper:]' '[:lower:]')
+
+        if [[ "$METHOD" != "merge" && "$METHOD" != "rebase" && "$METHOD" != "squash" ]]; then
+          echo "::error::Invalid merge method '$METHOD'. Must be one of: merge, rebase, squash."
+          exit 1
+        fi
+
+        gh pr merge -R "$REPOSITORY" --"$METHOD" --auto "$PR_NUMBER"

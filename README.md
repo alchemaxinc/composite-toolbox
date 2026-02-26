@@ -15,6 +15,7 @@ This is a helper toolbox for [alchemaxinc/update-deps](https://github.com/alchem
 - **[create-pr](./create-pr/)** - Create a new branch, commit files, and open a pull request
 - **[merge-pr](./merge-pr/)** - Enable auto-merging for a pull request with customizable options
 - **[semantic-release](./semantic-release/)** - Run semantic-release with caching and optional backmerge support
+- **[sync-tags-in-docs](./sync-tags-in-docs/)** - Update GitHub action tags in documentation files to match the current version
 
 ## 🤝 Contributing
 

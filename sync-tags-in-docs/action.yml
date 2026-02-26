@@ -32,8 +32,9 @@ runs:
     - name: Validate semantic version tag
       id: validate_tag
       shell: bash
+      env:
+        TAG: ${{ inputs.current-tag }}
       run: |
-        TAG="${{ inputs.current-tag }}"
         echo "::debug::Validating tag: $TAG"
 
         # Remove 'v' prefix if present
@@ -51,26 +52,24 @@ runs:
     - name: Find files to scan
       id: find_files
       shell: bash
+      env:
+        EXTENSIONS: ${{ inputs.file-extensions }}
+        FOLDER: ${{ inputs.folder }}
       run: |
-        EXTENSIONS="${{ inputs.file-extensions }}"
-        FOLDER="${{ inputs.folder }}"
-
         echo "::debug::Scanning folder: $FOLDER"
         echo "::debug::File extensions: $EXTENSIONS"
 
-        # Build find command for multiple extensions
-        FIND_ARGS=""
+        # Find files by iterating extensions and accumulating results
+        FILES=""
         for ext in $EXTENSIONS; do
-          if [ -n "$FIND_ARGS" ]; then
-            FIND_ARGS="$FIND_ARGS -o"
+          MATCHES=$(find "$FOLDER" -type f -name "*$ext" 2>/dev/null || true)
+          if [ -n "$MATCHES" ]; then
+            FILES="${FILES}${FILES:+ }$(echo "$MATCHES" | tr '\n' ' ')"
           fi
-          FIND_ARGS="$FIND_ARGS -name \"*$ext\""
         done
 
-        echo "::debug::Find command arguments: $FIND_ARGS"
-
-        # Find all matching files
-        FILES=$(eval "find \"$FOLDER\" -type f \\( $FIND_ARGS \\)" 2>/dev/null || true)
+        # Trim whitespace
+        FILES=$(echo "$FILES" | xargs)
 
         if [ -z "$FILES" ]; then
           echo "::notice::No files found with extensions: $EXTENSIONS"
@@ -79,17 +78,17 @@ runs:
         fi
 
         echo "::debug::Found files: $FILES"
-        # Convert to space-separated list for easier processing
-        FILES_LIST=$(echo "$FILES" | tr '\n' ' ')
-        echo "files=$FILES_LIST" >> $GITHUB_OUTPUT
+        echo "files=$FILES" >> $GITHUB_OUTPUT
 
     - name: Update tags in documentation
       id: update_tags
       shell: bash
+      env:
+        FILES: ${{ steps.find_files.outputs.files }}
+        REPO_PATH: ${{ inputs.github-repo-path }}
+        NEW_VERSION: ${{ steps.validate_tag.outputs.normalized_version }}
+        FOLDER: ${{ inputs.folder }}
       run: |
-        FILES="${{ steps.find_files.outputs.files }}"
-        REPO_PATH="${{ inputs.github-repo-path }}"
-        NEW_VERSION="${{ steps.validate_tag.outputs.normalized_version }}"
         FILES_UPDATED=""
 
         if [ -z "$FILES" ]; then
@@ -106,12 +105,12 @@ runs:
           if [ ! -f "$file" ]; then
             continue
           fi
-          
+
           echo "::debug::Processing file: $file"
 
           # Get the directory containing the file
           FILE_DIR=$(dirname "$file")
-          
+
           # Calculate relative path from FOLDER to FILE_DIR
           if [ "$FILE_DIR" = "$FOLDER" ] || [ "$FILE_DIR" = "." ]; then
             # File is in root folder, no relative path needed
@@ -120,7 +119,7 @@ runs:
             # Remove the FOLDER prefix and leading slash to get relative path
             RELATIVE_PATH=$(echo "$FILE_DIR" | sed "s|^$FOLDER/\?||" | sed "s|^\./||")
           fi
-          
+
           # Create pattern to match the repository usage in the file
           # Pattern matches: repo-path/relative-path@any-version or repo-path@any-version for root
           if [ -n "$RELATIVE_PATH" ]; then
@@ -128,25 +127,25 @@ runs:
           else
             PATTERN="${REPO_PATH}@"
           fi
-          
+
           echo "::debug::Using pattern: $PATTERN"
-          
+
           # Check if file contains the pattern
           if ! grep -q "$PATTERN" "$file"; then
             echo "::debug::No matching pattern found in $file"
             continue
           fi
-          
+
           echo "::debug::Found pattern in $file"
-          
+
           # Determine the appropriate version format based on existing usage
           # Extract current version to understand the format preference
           CURRENT_USAGE=$(grep -o "${PATTERN}[^[:space:]]*" "$file" | head -1)
           CURRENT_VERSION=$(echo "$CURRENT_USAGE" | sed "s/.*@v\?//")
-          
+
           echo "::debug::Current usage: $CURRENT_USAGE"
           echo "::debug::Current version: $CURRENT_VERSION"
-          
+
           # Determine new version format based on current format
           NEW_TAG_VERSION=""
           if [[ $CURRENT_VERSION =~ ^[0-9]+$ ]]; then
@@ -161,12 +160,12 @@ runs:
             # Current is full version or other format, use full version
             NEW_TAG_VERSION="v$NEW_VERSION"
           fi
-          
+
           echo "::debug::New tag version: $NEW_TAG_VERSION"
-          
+
           # Replace all occurrences of the pattern with the new version
           sed -i.bak "s|${PATTERN}[^[:space:])]]*|${PATTERN%@}@${NEW_TAG_VERSION}|g" "$file"
-          
+
           # Check if file was actually modified
           if ! cmp -s "$file" "$file.bak"; then
             echo "::notice::Updated tags in $file to $NEW_TAG_VERSION"

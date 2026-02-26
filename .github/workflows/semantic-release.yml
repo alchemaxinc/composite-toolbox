@@ -21,45 +21,10 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Get current year and month month for caching
-        id: date
-        run: echo "month_year=$(date +'%m-%Y')" >> $GITHUB_OUTPUT
-
-      - name: Cache semantic-release tools
-        id: cache-semantic-release
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm-semantic-release
-          key: npm-semantic-release-${{ runner.os }}-${{ steps.date.outputs.month_year }}-v1
-          restore-keys: |
-            npm-semantic-release-${{ runner.os }}-${{ steps.date.outputs.month_year }}-
-            npm-semantic-release-${{ runner.os }}-
-
-      - name: Install semantic-release and plugins
-        if: steps.cache-semantic-release.outputs.cache-hit != 'true'
-        run: |
-          npm config set prefix ~/.npm-semantic-release
-          npm install -g \
-            semantic-release \
-            @semantic-release/commit-analyzer \
-            @semantic-release/release-notes-generator \
-            @semantic-release/npm \
-            @semantic-release/github
-
-      - name: Add semantic-release to PATH
-        run: echo "$HOME/.npm-semantic-release/bin" >> $GITHUB_PATH
-
       - name: Run semantic-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: semantic-release
+        uses: ./semantic-release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   semantic-release-flowing-tags:
     name: Add flowing tags
@@ -72,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -88,9 +53,9 @@ jobs:
       - name: Is tag semantic?
         id: is-tag-semantic
         if: steps.latest-tag.outputs.tag != ''
+        env:
+          TAG: ${{ steps.latest-tag.outputs.tag }}
         run: |
-          TAG="${{ steps.latest-tag.outputs.tag }}"
-
           # Skip if tag doesn't match semantic version pattern
           if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::debug::Tag $TAG doesn't match semantic version pattern, skipping moving tags"
@@ -104,8 +69,9 @@ jobs:
       - name: Extract version tag
         id: major-minor-tags
         if: ${{ steps.is-tag-semantic.outputs.semantic == 'true' }}
+        env:
+          TAG: ${{ steps.is-tag-semantic.outputs.semantic-tag }}
         run: |
-          TAG="${{ steps.is-tag-semantic.outputs.semantic-tag }}"
           VERSION=${TAG#v}
           IFS='.' read -ra VERSION_PARTS <<< "$VERSION"
           MAJOR=${VERSION_PARTS[0]}
@@ -119,9 +85,9 @@ jobs:
         if: ${{ steps.is-tag-semantic.outputs.semantic == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.is-tag-semantic.outputs.semantic-tag }}
+          MAJOR: ${{ steps.major-minor-tags.outputs.major }}
         run: |
-          TAG="${{ steps.is-tag-semantic.outputs.semantic-tag }}"
-          MAJOR="${{ steps.major-minor-tags.outputs.major }}"
           MAJOR_TAG="v$MAJOR"
           echo "::debug::Creating/updating tag $MAJOR_TAG to point to $TAG"
           git tag -f "$MAJOR_TAG" "$TAG"
@@ -132,10 +98,10 @@ jobs:
         if: ${{ steps.is-tag-semantic.outputs.semantic == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.is-tag-semantic.outputs.semantic-tag }}
+          MAJOR: ${{ steps.major-minor-tags.outputs.major }}
+          MINOR: ${{ steps.major-minor-tags.outputs.minor }}
         run: |
-          TAG="${{ steps.is-tag-semantic.outputs.semantic-tag }}"
-          MAJOR="${{ steps.major-minor-tags.outputs.major }}"
-          MINOR="${{ steps.major-minor-tags.outputs.minor }}"
           MINOR_TAG="v$MAJOR.$MINOR"
           echo "::debug::Creating/updating tag $MINOR_TAG to point to $TAG"
           git tag -f "$MINOR_TAG" "$TAG"

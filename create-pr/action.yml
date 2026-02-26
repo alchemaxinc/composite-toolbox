@@ -25,14 +25,16 @@ inputs:
     default: ''
 
   files:
-    required: true
+    required: false
     type: string
-    description: 'Files to commit'
+    description: 'Files to commit (if empty, no commit is made — useful for backmerge PRs)'
+    default: ''
 
   commit-message:
-    required: true
+    required: false
     type: string
-    description: 'Message the commit will have'
+    description: 'Message the commit will have (required when files is provided)'
+    default: ''
 
   pr-title:
     required: true
@@ -52,38 +54,36 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Validate inputs
-      shell: bash
-      run: |
-        if [ -z "${{ inputs.files }}" ] || [ "${{ inputs.files }}" = "" ]; then
-          echo "::error::The 'files' input cannot be empty. It represents files to add with 'git add'. If you meant to add all files, use '.' as the files input."
-          exit 1
-        fi
-
     - name: Create and push branch
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
         FILES_TO_ADD: ${{ inputs.files }}
         COMMIT_MESSAGE: ${{ inputs.commit-message }}
+        BRANCH_PREFIX: ${{ inputs.branch-prefix }}
+        BRANCH_POSTFIX: ${{ inputs.branch-postfix }}
       run: |
-        if [ -z "${{ inputs.branch-postfix }}" ]; then
-          BRANCH_NAME="${{ inputs.branch-prefix }}-$(date +%Y%m%d)-${{ github.run_id }}"
+        if [ -z "$BRANCH_POSTFIX" ]; then
+          BRANCH_NAME="${BRANCH_PREFIX}-$(date +%Y%m%d)-${{ github.run_id }}"
         else
-          BRANCH_NAME="${{ inputs.branch-prefix }}-${{ inputs.branch-postfix }}"
+          BRANCH_NAME="${BRANCH_PREFIX}-${BRANCH_POSTFIX}"
         fi
 
         echo "::debug::Creating branch: $BRANCH_NAME"
         git checkout -b "$BRANCH_NAME"
 
-        echo "::debug::Adding files: $FILES_TO_ADD"
-        git add $FILES_TO_ADD
+        if [ -n "$FILES_TO_ADD" ]; then
+          echo "::debug::Adding files: $FILES_TO_ADD"
+          git add $FILES_TO_ADD
 
-        if git diff --cached --quiet; then
-          echo "::notice::No changes to commit — pushing branch as-is (e.g. backmerge scenario)"
+          if git diff --cached --quiet; then
+            echo "::notice::No changes to commit — pushing branch as-is (e.g. backmerge scenario)"
+          else
+            echo "::debug::Committing changes with message: '$COMMIT_MESSAGE'"
+            git commit -m "$COMMIT_MESSAGE"
+          fi
         else
-          echo "::debug::Committing changes with message: '$COMMIT_MESSAGE'"
-          git commit -m "$COMMIT_MESSAGE"
+          echo "::notice::No files specified — pushing branch as-is (e.g. backmerge scenario)"
         fi
 
         echo "::debug::Pushing branch $BRANCH_NAME to origin"

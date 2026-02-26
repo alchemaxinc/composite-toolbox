@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Make changes
         run: |
@@ -68,8 +68,8 @@ jobs:
 | `base-branch`    | Base branch for the pull request                                                  | :white_check_mark: |
 | `branch-prefix`  | Prefix for the new branch name                                                    | :white_check_mark: |
 | `branch-postfix` | Postfix for the new branch name (defaults to `YYYYMMDD-{run_id}` if not provided) | :x:                |
-| `files`          | Files to commit (space-separated)                                                 | :white_check_mark: |
-| `commit-message` | Commit message                                                                    | :white_check_mark: |
+| `files`          | Files to commit (space-separated). If empty, no commit is made (useful for backmerge PRs) | :x:                |
+| `commit-message` | Commit message (required when files is provided)                                  | :x:                |
 | `pr-title`       | Pull request title                                                                | :white_check_mark: |
 | `pr-body`        | Pull request body (Markdown supported)                                            | :white_check_mark: |
 

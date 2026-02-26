@@ -38,11 +38,19 @@ runs:
     - name: Configure git (as an app)
       if: ${{ inputs.app-slug != '' }}
       shell: bash
+      env:
+        APP_SLUG: ${{ inputs.app-slug }}
       run: |
-        APP_SLUG="${{ inputs.app-slug }}"
         bot_login="${APP_SLUG}[bot]"
         # URL-encode [] as %5B %5D
-        bot_id=$(curl -fsSL "https://api.github.com/users/${APP_SLUG}%5Bbot%5D" | jq -r .id)
+        response=$(curl -fsSL "https://api.github.com/users/${APP_SLUG}%5Bbot%5D")
+        bot_id=$(echo "$response" | jq -r .id)
+
+        if [ -z "$bot_id" ] || [ "$bot_id" = "null" ]; then
+          echo "::error::Failed to resolve bot ID for app slug '${APP_SLUG}'. API response: $response"
+          exit 1
+        fi
+
         git config --local user.name "$bot_login"
         git config --local user.email "${bot_id}+${bot_login}@users.noreply.github.com"
 

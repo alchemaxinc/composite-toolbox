@@ -19,12 +19,13 @@ runs:
     - name: Check for changes
       id: check_changes
       shell: bash
+      env:
+        FILES: ${{ inputs.files }}
       run: |
-        FILES="${{ inputs.files }}"
-
         echo "::debug::Checking for changes in files: $FILES"
 
         # Use -- to separate revisions from pathspecs for safety.
+        # Note: $FILES is intentionally unquoted for word-splitting (space-separated file list)
         # Capture stderr to show git errors directly
         DIFF_OUTPUT=$(git diff -- $FILES 2>&1)
         GIT_EXIT_CODE=$?

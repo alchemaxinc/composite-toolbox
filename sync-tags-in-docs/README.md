@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Sync tags in documentation
         uses: alchemaxinc/composite-toolbox/sync-tags-in-docs@v1
@@ -44,7 +44,7 @@ jobs:
 
 | Output          | Description                       |
 | --------------- | --------------------------------- |
-| `files_updated` | Number of files that were updated |
+| `files_updated` | Space-separated list of files that were updated |
 
 ## :warning: Notes
 
