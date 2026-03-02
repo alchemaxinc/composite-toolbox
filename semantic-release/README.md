@@ -79,7 +79,7 @@ jobs:
 | `enable-backmerge`        | Enable backmerge from source to target branch after release        | :x:      | `false`               |
 | `backmerge-target-branch` | Target branch for backmerge (only used when enable-backmerge=true) | :x:      | `develop`             |
 | `source-branch`           | Source branch for semantic-release (typically main)                | :x:      | `main`                |
-| `merge-strategy`          | Merge strategy for backmerge: `merge`, `squash`, or `rebase`      | :x:      | `merge`               |
+| `merge-strategy`          | Merge strategy for backmerge: `merge`, `squash`, or `rebase`       | :x:      | `merge`               |
 
 ## :warning: Prerequisites
 
