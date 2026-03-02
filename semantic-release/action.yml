@@ -23,6 +23,11 @@ inputs:
     description: 'Source branch for semantic-release (typically main)'
     default: 'main'
 
+  merge-strategy:
+    required: false
+    description: "Merge strategy for backmerge. Supported values: 'merge' (merge commit, default), 'squash' (squash and merge), 'rebase' (rebase and merge)"
+    default: 'merge'
+
 runs:
   using: 'composite'
   steps:
@@ -77,10 +82,33 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
+        MERGE_STRATEGY: ${{ inputs.merge-strategy }}
       run: |
+        if [[ "$MERGE_STRATEGY" != "merge" && "$MERGE_STRATEGY" != "squash" && "$MERGE_STRATEGY" != "rebase" ]]; then
+          echo "::error::Invalid merge-strategy '$MERGE_STRATEGY'. Supported values: merge, squash, rebase"
+          exit 1
+        fi
+
         git config --global user.name 'github-actions[bot]'
         git config --global user.email 'github-actions[bot]@users.noreply.github.com'
         git fetch origin ${{ inputs.backmerge-target-branch }}
         git checkout ${{ inputs.backmerge-target-branch }}
-        git merge ${{ inputs.source-branch }} --no-ff -m "chore: backmerge ${{ inputs.source-branch }} after release"
+
+        case "$MERGE_STRATEGY" in
+          merge)
+            git merge ${{ inputs.source-branch }} --no-ff -m "chore: backmerge ${{ inputs.source-branch }} after release"
+            ;;
+          squash)
+            git merge ${{ inputs.source-branch }} --squash
+            if git diff --cached --quiet; then
+              echo "::notice::No changes to commit after squash merge — branches are already in sync"
+              exit 0
+            fi
+            git commit -m "chore: backmerge ${{ inputs.source-branch }} after release"
+            ;;
+          rebase)
+            git rebase ${{ inputs.source-branch }}
+            ;;
+        esac
+
         git push origin ${{ inputs.backmerge-target-branch }}
