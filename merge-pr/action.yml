@@ -10,19 +10,11 @@ inputs:
   pull-request-number:
     description: 'The number of the target pull request'
     required: true
-  merge-method:
-    description: 'The merge method to use. `merge`, `rebase` or `squash`.'
-    default: merge
 runs:
   using: composite
   steps:
-    - name: Lowercase
-      id: lowercase
-      shell: bash
-      run: echo merge-method=$(echo "${{ inputs.merge-method }}" | tr '[:upper:]' '[:lower:]') >> $GITHUB_OUTPUT
-
     - name: Enable automerge
       shell: bash
-      run: gh pr merge -R "${{ inputs.repository }}" --${{ steps.lowercase.outputs.merge-method }} --auto "${{ inputs.pull-request-number }}"
+      run: gh pr merge -R "${{ inputs.repository }}" --merge --auto "${{ inputs.pull-request-number }}"
       env:
         GH_TOKEN: ${{ inputs.token }}
