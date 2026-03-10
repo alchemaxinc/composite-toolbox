@@ -27,3 +27,16 @@ jobs:
           branch-prefix: 'update-actions'
           pr-title: 'chore: Update GitHub Actions'
           commit-message: 'chore: update github actions'
+
+      - name: Update GitHub Actions (files in top-level non-hidden folders)
+        uses: alchemaxinc/update-deps/actions@v1
+        with:
+          token: ${{ steps.app.outputs.token }}
+          base-branch: 'main'
+          branch-prefix: 'update-actions'
+          pr-title: 'feat: Update `action.yml` files'
+          commit-message: 'feat: update `action.yml` files'
+          file-glob: '[!.]*/action.yml'
+          check-files: '[!.]*/action.yml'
+          prefixes: 'actions,hashicorp'
+          auto-merge: 'true'
