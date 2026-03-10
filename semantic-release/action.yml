@@ -32,7 +32,7 @@ runs:
   using: 'composite'
   steps:
     - name: Checkout code
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
         fetch-tags: true
@@ -40,7 +40,7 @@ runs:
 
     - name: Cache semantic-release
       id: cache-sr
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.npm-global
         key: "npm-sr-${{ runner.os }}-${{ hashFiles('*releaserc*', '**/package-lock.json', '**/package.json') }}"
