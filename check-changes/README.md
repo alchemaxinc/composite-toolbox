@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Check for changes
-        uses: alchemaxinc/composite-toolbox/check-changes@v1.12.5
+        uses: alchemaxinc/composite-toolbox/check-changes@v1.13.0
         id: check-changes
         with:
           files: 'package.json yarn.lock'
