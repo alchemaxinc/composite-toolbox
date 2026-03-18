@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - name: Run semantic-release
-        uses: alchemaxinc/composite-toolbox/semantic-release@v1
+        uses: alchemaxinc/composite-toolbox/semantic-release@v1.12.4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -62,7 +62,7 @@ jobs:
 
     steps:
       - name: Run semantic-release
-        uses: alchemaxinc/composite-toolbox/semantic-release@v1
+        uses: alchemaxinc/composite-toolbox/semantic-release@v1.12.4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           enable-backmerge: 'true'
