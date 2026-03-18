@@ -19,7 +19,7 @@ inputs:
 
   current-tag:
     required: true
-    description: 'Current GitHub tag to update to (must follow semantic versioning)'
+    description: 'Current GitHub tag to update to (e.g., "v1.10.2")'
 
 outputs:
   files_updated:
@@ -29,34 +29,34 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Validate semantic version tag
+    - name: Validate tag
       id: validate_tag
       shell: bash
       run: |
         TAG="${{ inputs.current-tag }}"
         echo "::debug::Validating tag: $TAG"
 
-        # Remove 'v' prefix if present
-        VERSION=${TAG#v}
-
-        # Validate semantic versioning pattern
-        if [[ ! $VERSION =~ ^[0-9]+(\.[0-9]+(\.[0-9]+)?)?$ ]]; then
-          echo "::error::Tag '$TAG' is not valid semantic versioning. Expected formats: v1, v1.0, v1.0.0"
+        if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "::error::Tag '$TAG' must be a full semantic version with v prefix (e.g., v1.10.2)"
           exit 1
         fi
 
-        echo "::debug::Tag validation passed"
-        echo "normalized_version=$VERSION" >> $GITHUB_OUTPUT
+        echo "::debug::Tag validation passed: $TAG"
 
-    - name: Find files to scan
-      id: find_files
+    - name: Find and update tags in documentation
+      id: update_tags
       shell: bash
       run: |
         EXTENSIONS="${{ inputs.file-extensions }}"
         FOLDER="${{ inputs.folder }}"
+        REPO_PATH="${{ inputs.github-repo-path }}"
+        NEW_TAG="${{ inputs.current-tag }}"
+        FILES_UPDATED=""
 
         echo "::debug::Scanning folder: $FOLDER"
         echo "::debug::File extensions: $EXTENSIONS"
+        echo "::debug::Repository path: $REPO_PATH"
+        echo "::debug::New tag: $NEW_TAG"
 
         # Build find command for multiple extensions
         FIND_ARGS=""
@@ -67,115 +67,50 @@ runs:
           FIND_ARGS="$FIND_ARGS -name \"*$ext\""
         done
 
-        echo "::debug::Find command arguments: $FIND_ARGS"
-
-        # Find all matching files
         FILES=$(eval "find \"$FOLDER\" -type f \\( $FIND_ARGS \\)" 2>/dev/null || true)
 
         if [ -z "$FILES" ]; then
           echo "::notice::No files found with extensions: $EXTENSIONS"
-          echo "files=" >> $GITHUB_OUTPUT
-          exit 0
-        fi
-
-        echo "::debug::Found files: $FILES"
-        # Convert to space-separated list for easier processing
-        FILES_LIST=$(echo "$FILES" | tr '\n' ' ')
-        echo "files=$FILES_LIST" >> $GITHUB_OUTPUT
-
-    - name: Update tags in documentation
-      id: update_tags
-      shell: bash
-      run: |
-        FILES="${{ steps.find_files.outputs.files }}"
-        REPO_PATH="${{ inputs.github-repo-path }}"
-        NEW_VERSION="${{ steps.validate_tag.outputs.normalized_version }}"
-        FILES_UPDATED=""
-
-        if [ -z "$FILES" ]; then
-          echo "::notice::No files to process"
           echo "files_updated=" >> $GITHUB_OUTPUT
           exit 0
         fi
 
-        echo "::debug::Processing files: $FILES"
-        echo "::debug::Repository path: $REPO_PATH"
-        echo "::debug::New version: $NEW_VERSION"
+        # Escape slashes in repo path for use in sed
+        ESCAPED_REPO_PATH=$(echo "$REPO_PATH" | sed 's|/|\\/|g')
 
         for file in $FILES; do
           if [ ! -f "$file" ]; then
             continue
           fi
-          
+
           echo "::debug::Processing file: $file"
 
-          # Get the directory containing the file
-          FILE_DIR=$(dirname "$file")
-          
-          # Calculate relative path from FOLDER to FILE_DIR
-          if [ "$FILE_DIR" = "$FOLDER" ] || [ "$FILE_DIR" = "." ]; then
-            # File is in root folder, no relative path needed
-            RELATIVE_PATH=""
-          else
-            # Remove the FOLDER prefix and leading slash to get relative path
-            RELATIVE_PATH=$(echo "$FILE_DIR" | sed "s|^$FOLDER/\?||" | sed "s|^\./||")
-          fi
-          
-          # Create pattern to match the repository usage in the file
-          # Pattern matches: repo-path/relative-path@any-version or repo-path@any-version for root
-          if [ -n "$RELATIVE_PATH" ]; then
-            PATTERN="${REPO_PATH}/${RELATIVE_PATH}@"
-          else
-            PATTERN="${REPO_PATH}@"
-          fi
-          
-          echo "::debug::Using pattern: $PATTERN"
-          
-          # Check if file contains the pattern
-          if ! grep -q "$PATTERN" "$file"; then
-            echo "::debug::No matching pattern found in $file"
+          # Match any reference like: alchemaxinc/update-deps/something@vX or @vX.Y or @vX.Y.Z
+          # and replace the tag portion with the new full tag
+          if ! grep -q "${REPO_PATH}[^@]*@v[0-9]" "$file"; then
+            echo "::debug::No matching references in $file"
             continue
           fi
-          
-          echo "::debug::Found pattern in $file"
-          
-          # Determine the appropriate version format based on existing usage
-          # Extract current version to understand the format preference
-          CURRENT_USAGE=$(grep -o "${PATTERN}[^[:space:]]*" "$file" | head -1)
-          CURRENT_VERSION=$(echo "$CURRENT_USAGE" | sed "s/.*@v\?//")
-          
-          echo "::debug::Current usage: $CURRENT_USAGE"
-          echo "::debug::Current version: $CURRENT_VERSION"
-          
-          # Determine new version format based on current format
-          NEW_TAG_VERSION=""
-          if [[ $CURRENT_VERSION =~ ^[0-9]+$ ]]; then
-            # Current is major only (e.g., "1")
-            NEW_MAJOR=$(echo "$NEW_VERSION" | cut -d. -f1)
-            NEW_TAG_VERSION="v$NEW_MAJOR"
-          elif [[ $CURRENT_VERSION =~ ^[0-9]+\.[0-9]+$ ]]; then
-            # Current is major.minor (e.g., "1.0")
-            NEW_MAJOR_MINOR=$(echo "$NEW_VERSION" | cut -d. -f1-2)
-            NEW_TAG_VERSION="v$NEW_MAJOR_MINOR"
-          else
-            # Current is full version or other format, use full version
-            NEW_TAG_VERSION="v$NEW_VERSION"
-          fi
-          
-          echo "::debug::New tag version: $NEW_TAG_VERSION"
-          
-          # Replace all occurrences of the pattern with the new version
-          sed -i.bak "s|${PATTERN}[^[:space:])]]*|${PATTERN%@}@${NEW_TAG_VERSION}|g" "$file"
-          
-          # Check if file was actually modified
+
+          echo "::debug::Found references in $file, updating..."
+
+          # Replace: repo-path/any-subpath@v<anything> -> repo-path/any-subpath@NEW_TAG
+          # This handles @v1, @v1.2, @v1.2.3 etc.
+          sed -i.bak "s|\(${REPO_PATH}/[^@]*\)@v[0-9][0-9.]*|\1@${NEW_TAG}|g" "$file"
+
+          # Also handle bare repo references without subpath: repo-path@v<anything>
+          sed -i.bak "s|\(${REPO_PATH}\)@v[0-9][0-9.]*|\1@${NEW_TAG}|g" "$file"
+
           if ! cmp -s "$file" "$file.bak"; then
-            echo "::notice::Updated tags in $file to $NEW_TAG_VERSION"
+            echo "::notice::Updated tags in $file to $NEW_TAG"
             FILES_UPDATED="$FILES_UPDATED $file"
           fi
 
-          # Clean up backup file
           rm -f "$file.bak"
         done
+
+        # Trim leading space
+        FILES_UPDATED=$(echo "$FILES_UPDATED" | sed 's/^ //')
 
         echo "::notice::Updated files: $FILES_UPDATED"
         echo "files_updated=$FILES_UPDATED" >> $GITHUB_OUTPUT

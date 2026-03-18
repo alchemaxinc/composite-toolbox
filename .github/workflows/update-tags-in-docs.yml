@@ -1,0 +1,55 @@
+name: Update Tags in Documentation
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to update documentation to (e.g., v1.10.2)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-docs:
+    name: Update Documentation Tags
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout and setup
+        uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1
+
+      - name: Sync tags in documentation
+        id: sync-tags
+        uses: alchemaxinc/composite-toolbox/sync-tags-in-docs@v1
+        with:
+          file-extensions: '.md'
+          github-repo-path: 'alchemaxinc/composite-toolbox'
+          current-tag: ${{ inputs.tag }}
+
+      - name: Create Pull Request
+        id: create-pr
+        if: steps.sync-tags.outputs.files_updated != ''
+        uses: alchemaxinc/composite-toolbox/create-pr@v1
+        with:
+          token: ${{ github.token }}
+          base-branch: 'main'
+          branch-prefix: 'update-docs-tags'
+          files: ${{ steps.sync-tags.outputs.files_updated }}
+          commit-message: 'docs: update action tags to ${{ inputs.tag }}'
+          pr-title: 'docs: update action tags to ${{ inputs.tag }}'
+          pr-body: |
+            Automatically updates GitHub action tags in documentation files to match the latest release.
+
+            **New tag**: `${{ inputs.tag }}`
+            **Files updated**: `${{ steps.sync-tags.outputs.files_updated }}`
+
+      - name: Enable auto-merge
+        if: steps.create-pr.outputs.pr_number != ''
+        uses: alchemaxinc/composite-toolbox/merge-pr@v1
+        with:
+          token: ${{ github.token }}
+          pull-request-number: ${{ steps.create-pr.outputs.pr_number }}
+          merge-method: 'squash'
