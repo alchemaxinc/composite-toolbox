@@ -124,6 +124,8 @@ the [Conventional Commits](https://www.conventionalcommits.org/) specification:
 
 - **Automatic Caching**: Caches semantic-release and its plugins based on package.json/package-lock.json to speed up
   subsequent runs
+- **Dynamic Git Identity**: Automatically resolves the git committer identity from the provided token (supports GitHub
+  App tokens, PATs, and the default `GITHUB_TOKEN`)
 - **Full Git History**: Fetches all history and tags needed for semantic-release
 - **Backmerge Support**: Optionally backmerges releases from main to develop (or custom branches)
 - **Flexible Configuration**: Supports custom source and target branch configurations

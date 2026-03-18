@@ -94,3 +94,13 @@ jobs:
 
 - The workflow must have appropriate permissions to access the repository
 - The token must have sufficient permissions for the intended operations
+
+## :bulb: How Git Identity Works
+
+When no `app-slug` is provided, the action automatically resolves the git committer identity from the provided token:
+
+- **GitHub App tokens** → Commits are attributed to the app's bot account (e.g., `my-app[bot]`)
+- **Personal Access Tokens** → Commits are attributed to the token owner
+- **Default `GITHUB_TOKEN`** → Commits are attributed to `github-actions[bot]`
+
+When `app-slug` is provided, the identity is configured explicitly from the slug.
