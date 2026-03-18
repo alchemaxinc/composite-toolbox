@@ -51,22 +51,4 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
-      run: |
-        if USER_JSON=$(gh api /user 2>/dev/null); then
-          GIT_USER=$(echo "$USER_JSON" | jq -r '.login')
-          GIT_ID=$(echo "$USER_JSON" | jq -r '.id')
-        elif APP_JSON=$(gh api /app 2>/dev/null); then
-          APP_SLUG=$(echo "$APP_JSON" | jq -r '.slug')
-          GIT_USER="${APP_SLUG}[bot]"
-          if BOT_JSON=$(gh api "/users/${APP_SLUG}%5Bbot%5D" 2>/dev/null); then
-            GIT_ID=$(echo "$BOT_JSON" | jq -r '.id')
-          else
-            GIT_ID=$(echo "$APP_JSON" | jq -r '.id')
-          fi
-        else
-          GIT_USER="github-actions[bot]"
-          GIT_ID="41898282"
-        fi
-
-        git config --local user.name "$GIT_USER"
-        git config --local user.email "${GIT_ID}+${GIT_USER}@users.noreply.github.com"
+      run: bash "$GITHUB_ACTION_PATH/../scripts/configure-git-identity.sh" --local
