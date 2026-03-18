@@ -2,7 +2,7 @@ name: Update Tags in Documentation
 
 on:
   workflow_run:
-    workflows: ["Semantic Versioning and Release"]
+    workflows: ['Semantic Versioning and Release']
     types: [completed]
     branches: [main]
   workflow_dispatch:
@@ -25,10 +25,16 @@ jobs:
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
 
     steps:
-      - name: Checkout and setup
-        uses: ./checkout-and-setup
+      - name: Checkout
+        uses: actions/checkout@v6
         with:
-          shallow: 'false'
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Configure git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
 
       - name: Determine tag
         id: get-tag
