@@ -40,14 +40,10 @@ jobs:
           fetch-tags: true
           token: ${{ steps.app.outputs.token }}
 
-      - name: Configure git as app bot
-        env:
-          APP_SLUG: alchemax-housekeeper
+      - name: Configure git
         run: |
-          bot_login="${APP_SLUG}[bot]"
-          bot_id=$(curl -fsSL "https://api.github.com/users/${APP_SLUG}%5Bbot%5D" | jq -r .id)
-          git config --local user.name "$bot_login"
-          git config --local user.email "${bot_id}+${bot_login}@users.noreply.github.com"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
 
       - name: Determine tag
         id: get-tag
