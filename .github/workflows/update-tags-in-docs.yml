@@ -40,10 +40,10 @@ jobs:
           fetch-tags: true
           token: ${{ steps.app.outputs.token }}
 
-      - name: Configure git
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+      - name: Configure git identity
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: bash ./scripts/configure-git-identity.sh --local
 
       - name: Determine tag
         id: get-tag

@@ -38,6 +38,12 @@ runs:
         fetch-tags: true
         token: ${{ inputs.token }}
 
+    - name: Configure git identity
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: bash "$GITHUB_ACTION_PATH/../scripts/configure-git-identity.sh" --global
+
     - name: Cache semantic-release
       id: cache-sr
       uses: actions/cache@v5
@@ -60,7 +66,7 @@ runs:
         INSTALL_CMD="npm install -g semantic-release"
         if [ -n "$PLUGINS" ]; then
           while IFS= read -r plugin; do
-            INSTALL_CMD="$INSTALL_CMD $plugin"
+            [ -n "$plugin" ] && INSTALL_CMD="$INSTALL_CMD $plugin"
           done <<< "$PLUGINS"
         fi
 
@@ -89,8 +95,6 @@ runs:
           exit 1
         fi
 
-        git config --global user.name 'github-actions[bot]'
-        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
         git fetch origin ${{ inputs.backmerge-target-branch }}
         git checkout ${{ inputs.backmerge-target-branch }}
 

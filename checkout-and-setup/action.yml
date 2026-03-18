@@ -46,9 +46,9 @@ runs:
         git config --local user.name "$bot_login"
         git config --local user.email "${bot_id}+${bot_login}@users.noreply.github.com"
 
-    - name: Configure git (as default actions user)
+    - name: Configure git (from token identity)
       if: ${{ inputs.app-slug == '' }}
       shell: bash
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: bash "$GITHUB_ACTION_PATH/../scripts/configure-git-identity.sh" --local
