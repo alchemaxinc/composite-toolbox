@@ -10,11 +10,14 @@ inputs:
   pull-request-number:
     description: 'The number of the target pull request'
     required: true
+  merge-method:
+    description: 'The merge method to use (merge, squash, or rebase)'
+    default: 'merge'
 runs:
   using: composite
   steps:
     - name: Enable automerge
       shell: bash
-      run: gh pr merge -R "${{ inputs.repository }}" --merge --auto "${{ inputs.pull-request-number }}"
+      run: gh pr merge -R "${{ inputs.repository }}" --${{ inputs.merge-method }} --auto "${{ inputs.pull-request-number }}"
       env:
         GH_TOKEN: ${{ inputs.token }}
