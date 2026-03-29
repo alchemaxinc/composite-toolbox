@@ -81,6 +81,30 @@ jobs:
 | `source-branch`           | Source branch for semantic-release (typically main)                | :x:      | `main`                |
 | `merge-strategy`          | Merge strategy for backmerge: `merge`, `squash`, or `rebase`       | :x:      | `merge`               |
 
+## :outbox_tray: Outputs
+
+| Output    | Description                                                          |
+| --------- | -------------------------------------------------------------------- |
+| `version` | The version of the new release (e.g., `1.2.3`), empty if no release  |
+| `tag`     | The git tag of the new release (e.g., `v1.2.3`), empty if no release |
+
+### Example: Using Outputs
+
+```yaml
+steps:
+  - name: Run semantic-release
+    id: release
+    uses: alchemaxinc/composite-toolbox/semantic-release@v1.12.5
+    with:
+      token: ${{ secrets.GITHUB_TOKEN }}
+
+  - name: Use release outputs
+    if: steps.release.outputs.version != ''
+    run: |
+      echo "New version: ${{ steps.release.outputs.version }}"
+      echo "New tag: ${{ steps.release.outputs.tag }}"
+```
+
 ## :warning: Prerequisites
 
 ### Required Permissions
