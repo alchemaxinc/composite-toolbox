@@ -10,16 +10,14 @@ set -euo pipefail
 GIT_CONFIG_SCOPE="${1:---local}"
 
 if USER_JSON=$(gh api /user 2>/dev/null); then
+  # PAT or fine-grained token
   GIT_USER=$(echo "$USER_JSON" | jq -r '.login')
   GIT_ID=$(echo "$USER_JSON" | jq -r '.id')
-elif APP_JSON=$(gh api /app 2>/dev/null); then
-  APP_SLUG=$(echo "$APP_JSON" | jq -r '.slug')
-  GIT_USER="${APP_SLUG}[bot]"
-  if BOT_JSON=$(gh api "/users/${APP_SLUG}%5Bbot%5D" 2>/dev/null); then
-    GIT_ID=$(echo "$BOT_JSON" | jq -r '.id')
-  else
-    GIT_ID=$(echo "$APP_JSON" | jq -r '.id')
-  fi
+elif VIEWER_JSON=$(gh api graphql -f query='{ viewer { login databaseId } }' 2>/dev/null); then
+  # App installation token or default GITHUB_TOKEN: REST /user returns 403
+  # for these token types, but GraphQL viewer query resolves the bot identity.
+  GIT_USER=$(echo "$VIEWER_JSON" | jq -r '.data.viewer.login')
+  GIT_ID=$(echo "$VIEWER_JSON" | jq -r '.data.viewer.databaseId')
 else
   GIT_USER="github-actions[bot]"
   GIT_ID="41898282"
