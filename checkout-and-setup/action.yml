@@ -13,6 +13,11 @@ inputs:
     description: 'GitHub App slug (e.g., my-app). If provided, configures git as the app bot instead of default user'
     default: ''
 
+  ref:
+    required: false
+    description: 'Git ref to checkout (branch, tag, or SHA). Defaults to the default behavior of actions/checkout'
+    default: ''
+
   shallow:
     required: false
     description: 'If true, performs shallow checkout. If false, fetches full history with tags'
@@ -26,12 +31,14 @@ runs:
       uses: actions/checkout@v6
       with:
         token: ${{ inputs.token }}
+        ref: ${{ inputs.ref || '' }}
 
     - name: Checkout repository (full history)
       if: ${{ inputs.shallow == 'false' }}
       uses: actions/checkout@v6
       with:
         token: ${{ inputs.token }}
+        ref: ${{ inputs.ref || '' }}
         fetch-depth: 0
         fetch-tags: true
 
