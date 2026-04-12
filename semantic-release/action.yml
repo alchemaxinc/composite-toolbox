@@ -85,11 +85,6 @@ runs:
       shell: bash
       run: echo "~/.npm-global/bin" >> $GITHUB_PATH
 
-    - name: Get latest tag before release
-      id: before
-      shell: bash
-      run: echo "tag=$(git tag --sort=-v:refname | head -1)" >> "$GITHUB_OUTPUT"
-
     - name: Run semantic-release
       shell: bash
       env:
@@ -101,11 +96,11 @@ runs:
       shell: bash
       run: |
         git fetch --tags origin
-        AFTER=$(git tag --sort=-v:refname | head -1)
+        TAG=$(git tag --points-at HEAD --sort=-v:refname | head -1)
 
-        if [ "${{ steps.before.outputs.tag }}" != "$AFTER" ] && [ -n "$AFTER" ]; then
-          echo "tag=$AFTER" >> "$GITHUB_OUTPUT"
-          echo "version=${AFTER#v}" >> "$GITHUB_OUTPUT"
+        if [ -n "$TAG" ]; then
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
         fi
 
     - name: Backmerge to develop
