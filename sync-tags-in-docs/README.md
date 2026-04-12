@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Sync tags in documentation
-        uses: alchemaxinc/composite-toolbox/sync-tags-in-docs@v1.14.2
+        uses: alchemaxinc/composite-toolbox/sync-tags-in-docs@v1.15.0
         with:
           github-repo-path: 'alchemaxinc/my-action'
           current-tag: ${{ inputs.tag }}
