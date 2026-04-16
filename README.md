@@ -18,8 +18,10 @@ This is a helper toolbox for [alchemaxinc/update-deps](https://github.com/alchem
 
 ## 🤝 Contributing
 
-Contributions are welcome! If you have ideas for additional composite actions that would be useful across multiple projects, please feel free to submit a pull request.
+Contributions are welcome! If you have ideas for additional composite actions
+that would be useful across multiple projects, please review the
+[contributing guide](./CONTRIBUTING.md) and open a pull request.
 
 ## 📄 License
 
-This project follows the same license as the main [alchemaxinc/update-deps](https://github.com/alchemaxinc/update-deps) repository.
+This project is available under the [MIT License](./LICENSE).
