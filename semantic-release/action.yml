@@ -85,6 +85,14 @@ runs:
       shell: bash
       run: echo "~/.npm-global/bin" >> $GITHUB_PATH
 
+    - name: Capture pre-existing tags at HEAD
+      id: pre-release-tags
+      shell: bash
+      run: |
+        git fetch --tags origin
+        BEFORE=$(git tag --points-at HEAD | sort | paste -sd ',' -)
+        echo "tags=$BEFORE" >> "$GITHUB_OUTPUT"
+
     - name: Run semantic-release
       shell: bash
       env:
@@ -94,9 +102,18 @@ runs:
     - name: Resolve release outputs
       id: release
       shell: bash
+      env:
+        TAGS_BEFORE: ${{ steps.pre-release-tags.outputs.tags }}
       run: |
         git fetch --tags origin
-        TAG=$(git tag --points-at HEAD --sort=-v:refname | head -1)
+        # Only emit a tag when semantic-release actually created a new one at HEAD.
+        # Comparing against the pre-existing tag set prevents picking up tags that
+        # were created by a prior workflow run on a different branch (e.g. a main
+        # release tag that became visible on develop after a backmerge of the same
+        # commit).
+        BEFORE_SORTED=$(printf '%s\n' "$TAGS_BEFORE" | tr ',' '\n' | sort -u)
+        AFTER_SORTED=$(git tag --points-at HEAD | sort -u)
+        TAG=$(comm -13 <(echo "$BEFORE_SORTED") <(echo "$AFTER_SORTED") | sort -V | tail -1)
 
         if [ -n "$TAG" ]; then
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
