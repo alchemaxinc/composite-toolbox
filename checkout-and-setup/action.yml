@@ -28,14 +28,14 @@ runs:
   steps:
     - name: Checkout repository (shallow)
       if: ${{ inputs.shallow == 'true' }}
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         token: ${{ inputs.token }}
         ref: ${{ inputs.ref || '' }}
 
     - name: Checkout repository (full history)
       if: ${{ inputs.shallow == 'false' }}
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         token: ${{ inputs.token }}
         ref: ${{ inputs.ref || '' }}
