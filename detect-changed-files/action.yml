@@ -1,0 +1,80 @@
+name: 'Detect Changed Files'
+
+description: 'Check whether files matching given pathspecs changed between a base ref and HEAD, e.g. across a pull request'
+
+inputs:
+  files:
+    required: false
+    default: ''
+    description: 'Space-separated list of git pathspecs to check; if empty, any change counts'
+
+  base:
+    required: false
+    default: ''
+    description: 'Base ref or SHA to compare HEAD against; defaults to the pull request base commit'
+
+outputs:
+  has_changes:
+    description: 'Whether any matching files changed between the base ref and HEAD (true/false)'
+    value: ${{ steps.detect.outputs.has_changes }}
+
+  changed_files:
+    description: 'Newline-separated list of changed files matching the pathspecs'
+    value: ${{ steps.detect.outputs.changed_files }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Detect changed files
+      id: detect
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        FILES="${{ inputs.files }}"
+        BASE="${{ inputs.base }}"
+
+        # Fall back to the pull request base commit when no base is supplied.
+        if [ -z "$BASE" ]; then
+          BASE="${{ github.event.pull_request.base.sha }}"
+        fi
+
+        if [ -z "$BASE" ]; then
+          echo "::error::No 'base' input provided and this is not a pull request; pass 'base' explicitly."
+          exit 1
+        fi
+
+        # The base commit must be present locally; check out with 'fetch-depth: 0'.
+        if ! git rev-parse --verify --quiet "${BASE}^{commit}" >/dev/null; then
+          echo "::error::Base ref '$BASE' was not found. Check out with 'fetch-depth: 0' or pass a fetched 'base'."
+          exit 1
+        fi
+
+        echo "::debug::Comparing ${BASE}...HEAD for pathspecs: ${FILES:-<all>}"
+
+        # Split the input on whitespace into an array of pathspecs and pass them quoted so
+        # Bash won't expand globs (e.g. '*.go') before git evaluates the pathspec.
+        FILES_ARR=()
+        if [ -n "$FILES" ]; then
+          read -r -a FILES_ARR <<<"$FILES"
+        fi
+
+        if [ "${#FILES_ARR[@]}" -gt 0 ]; then
+          CHANGED="$(git diff --name-only "${BASE}...HEAD" -- "${FILES_ARR[@]}")"
+        else
+          CHANGED="$(git diff --name-only "${BASE}...HEAD")"
+        fi
+
+        {
+          echo 'changed_files<<CHANGED_FILES_EOF'
+          echo "$CHANGED"
+          echo 'CHANGED_FILES_EOF'
+        } >>"$GITHUB_OUTPUT"
+
+        if [ -n "$CHANGED" ]; then
+          echo '::debug::Changes detected'
+          echo 'has_changes=true' >>"$GITHUB_OUTPUT"
+        else
+          echo '::debug::No changes detected'
+          echo 'has_changes=false' >>"$GITHUB_OUTPUT"
+        fi
