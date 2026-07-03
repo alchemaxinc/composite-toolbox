@@ -1,6 +1,6 @@
 {
   "language": "en",
-  "words": ["alchemaxinc"],
+  "words": ["alchemaxinc", "pathspec", "pathspecs"],
   "files": ["*.md", "*/**/*.md"],
   "ignoreWords": ["releaserc"],
   "ignorePaths": [],
