@@ -14,6 +14,7 @@ This is a helper toolbox for [alchemaxinc/update-deps](https://github.com/alchem
 - **[checkout-and-setup](./checkout-and-setup/)** - Common repository checkout and Git configuration in one step
 - **[create-pr](./create-pr/)** - Create a new branch, commit files, and open a pull request
 - **[detect-changed-files](./detect-changed-files/)** - Check if files matching given pathspecs changed between a base ref and HEAD
+- **[find-or-create-issue](./find-or-create-issue/)** - Idempotently find an existing issue by title, or create a new one
 - **[merge-pr](./merge-pr/)** - Enable auto-merge on a pull request
 - **[semantic-release](./semantic-release/)** - Run semantic-release with caching and optional backmerge support
 
