@@ -2,14 +2,9 @@
 # Idempotently finds an existing issue by exact title, or creates a new one.
 #
 # This is the backing script for the action.yml composite action in this
-# directory — use `alchemaxinc/composite-toolbox/find-or-create-issue@v1` for
-# normal single-call sites.
-#
-# Composite actions can only be invoked via a `uses:` step, which can't be
-# looped inline within a single job step. Callers that need to file one issue
-# per item in a bash loop (e.g. once per newly detected item) can instead
-# invoke this script file directly by path after checking out this repository,
-# so both call sites share the exact same logic with no duplication.
+# directory — use `alchemaxinc/composite-toolbox/find-or-create-issue@v1`
+# instead of invoking this script directly (see that action's README for how
+# to file one issue per item detected at runtime via a matrix job).
 #
 # Requires GH_TOKEN (or GITHUB_TOKEN) in the environment, as used by `gh`.
 # Prints the resulting issue URL to stdout; progress goes to stderr as
