@@ -6,11 +6,10 @@ condition (e.g. a failing dependency audit) so repeated runs reuse one issue
 instead of filing a duplicate every time.
 
 > [!IMPORTANT]  
-> Composite actions can only be invoked via a `uses:` step, which can't be
-> looped inline within a single job step. If you need to file one issue per
-> item in a bash loop, check out this repository and invoke
-> `find-or-create-issue/find-or-create-issue.sh` directly by path instead —
-> see [Looping over multiple items](#looping-over-multiple-items) below.
+> `uses:` steps are static and can't run in a bash loop. If you need to file
+> one issue per item detected at runtime, use a matrix job instead — see
+> [Filing one issue per detected item](#repeat-filing-one-issue-per-detected-item)
+> below.
 
 ## :rocket: Usage
 
@@ -64,27 +63,42 @@ jobs:
 - `GH_TOKEN` (via the `token` input) must have permission to list and create
   issues in the target repository
 
-## :repeat: Looping over multiple items
+## :repeat: Filing one issue per detected item
 
-To file one issue per item detected in a bash loop, check out this repository
-into a subdirectory and call the script directly instead of using `uses:`:
+`uses:` steps are static and can't run in a bash loop, so to file one issue
+per item detected at runtime, use a matrix job instead — one job instance per
+item, each calling this action directly like any other `uses:` step:
 
 ```yaml
-- name: Checkout composite-toolbox
-  uses: actions/checkout@v7
-  with:
-    repository: alchemaxinc/composite-toolbox
-    ref: v1
-    path: .composite-toolbox
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      items: ${{ steps.detect.outputs.items }} # JSON array, e.g. '["a","b"]'
+    steps:
+      - name: Detect items
+        id: detect
+        run: echo 'items=["a","b"]' >> "$GITHUB_OUTPUT"
 
-- name: File one issue per detected item
-  env:
-    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  run: |
-    for item in $ITEMS; do
-      .composite-toolbox/find-or-create-issue/find-or-create-issue.sh \
-        --title "Support for $item" \
-        --body "Detected $item; needs support." \
-        --label enhancement
-    done
+  file-issues:
+    needs: detect
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        item: ${{ fromJson(needs.detect.outputs.items) }}
+    steps:
+      - name: File or reuse tracking issue
+        uses: alchemaxinc/composite-toolbox/find-or-create-issue@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          title: 'Support for ${{ matrix.item }}'
+          body: 'Detected ${{ matrix.item }}; needs support.'
+          label: enhancement
 ```
+
+If a later job needs the filed issue URLs (e.g. to update a support matrix
+file), have each matrix job upload its result as an artifact named uniquely
+per item, then download and merge them all in the downstream job with
+[`actions/download-artifact`](https://github.com/actions/download-artifact)'s
+`pattern` and `merge-multiple` inputs — matrix job outputs aren't aggregated
+across instances, so `needs.<job>.outputs` alone won't expose every result.
