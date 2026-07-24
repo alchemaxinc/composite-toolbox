@@ -31,7 +31,7 @@ jobs:
 
       - name: File or reuse tracking issue
         if: failure() && steps.check.outcome == 'failure'
-        uses: alchemaxinc/composite-toolbox/find-or-create-issue@v1.19.0
+        uses: alchemaxinc/composite-toolbox/find-or-create-issue@v1.20.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           state: open
