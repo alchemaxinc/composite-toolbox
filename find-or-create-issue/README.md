@@ -88,7 +88,7 @@ jobs:
         item: ${{ fromJson(needs.detect.outputs.items) }}
     steps:
       - name: File or reuse tracking issue
-        uses: alchemaxinc/composite-toolbox/find-or-create-issue@v1
+        uses: alchemaxinc/composite-toolbox/find-or-create-issue@v1.20.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           title: 'Support for ${{ matrix.item }}'
