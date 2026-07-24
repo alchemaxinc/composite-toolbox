@@ -78,6 +78,26 @@ jobs:
           github-repo-path: 'alchemaxinc/composite-toolbox'
           current-tag: ${{ steps.get-tag.outputs.tag }}
 
+      - name: Build pull request body
+        id: pr-body
+        if: steps.sync-tags.outputs.files_updated != ''
+        shell: bash
+        env:
+          TAG: ${{ steps.get-tag.outputs.tag }}
+          FILES_UPDATED: ${{ steps.sync-tags.outputs.files_updated }}
+        run: |
+          {
+            echo 'pr_body<<PR_BODY_EOF'
+            echo 'Automatically updates GitHub action tags in documentation files to match the latest release.'
+            echo
+            echo "**New tag**: \`$TAG\`"
+            echo '**Files updated:**'
+            for file in $FILES_UPDATED; do
+              echo "- \`$file\`"
+            done
+            echo 'PR_BODY_EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Create Pull Request
         id: create-pr
         if: steps.sync-tags.outputs.files_updated != ''
@@ -89,11 +109,7 @@ jobs:
           files: ${{ steps.sync-tags.outputs.files_updated }}
           commit-message: 'docs: update action tags to ${{ steps.get-tag.outputs.tag }}'
           pr-title: 'docs: update action tags to ${{ steps.get-tag.outputs.tag }}'
-          pr-body: |
-            Automatically updates GitHub action tags in documentation files to match the latest release.
-
-            **New tag**: `${{ steps.get-tag.outputs.tag }}`
-            **Files updated**: `${{ steps.sync-tags.outputs.files_updated }}`
+          pr-body: ${{ steps.pr-body.outputs.pr_body }}
 
       - name: Enable auto-merge
         if: steps.create-pr.outputs.pr_number != ''
