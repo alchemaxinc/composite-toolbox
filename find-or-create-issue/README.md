@@ -57,6 +57,13 @@ jobs:
 | ------ | ------------------------------------------ |
 | `url`  | URL of the existing or newly created issue |
 
+## :warning: Prerequisites
+
+- The `gh` CLI must be available in the runner environment (preinstalled on
+  GitHub-hosted runners)
+- `GH_TOKEN` (via the `token` input) must have permission to list and create
+  issues in the target repository
+
 ## :repeat: Looping over multiple items
 
 To file one issue per item detected in a bash loop, check out this repository
@@ -81,10 +88,3 @@ into a subdirectory and call the script directly instead of using `uses:`:
         --label enhancement
     done
 ```
-
-## :warning: Prerequisites
-
-- The `gh` CLI must be available in the runner environment (preinstalled on
-  GitHub-hosted runners)
-- `GH_TOKEN` (via the `token` input) must have permission to list and create
-  issues in the target repository

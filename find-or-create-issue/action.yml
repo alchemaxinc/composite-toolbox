@@ -1,10 +1,6 @@
 name: 'Find or Create Issue'
 
-description: >-
-  Idempotently finds an existing issue by exact title, or creates a new one.
-  Useful for scheduled workflows that alert on a recurring condition (e.g. a
-  failing dependency audit) so repeated runs reuse one issue instead of
-  filing a duplicate every time.
+description: 'Idempotently find an existing issue by exact title, or create a new one'
 
 inputs:
   title:
