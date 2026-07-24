@@ -1,0 +1,53 @@
+name: 'Find or Create Issue'
+
+description: 'Idempotently find an existing issue by exact title, or create a new one'
+
+inputs:
+  title:
+    required: true
+    description: 'Exact issue title to search for and, if not found, create'
+
+  body:
+    required: true
+    description: 'Markdown body to use when creating a new issue'
+
+  token:
+    required: true
+    description: 'Token passed to `gh` as GH_TOKEN for issue list/create calls'
+
+  label:
+    required: false
+    default: ''
+    description: 'Label to apply when creating a new issue'
+
+  type:
+    required: false
+    default: ''
+    description: 'Issue type to apply when creating a new issue (e.g. "Feature", "Bug")'
+
+  state:
+    required: false
+    default: 'all'
+    description: 'Issue state to search within ("open" or "all")'
+
+outputs:
+  url:
+    description: 'URL of the existing or newly created issue'
+    value: ${{ steps.run.outputs.url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Find or create issue
+      id: run
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+      run: |
+        url="$(bash "$GITHUB_ACTION_PATH/find-or-create-issue.sh" \
+          --title "${{ inputs.title }}" \
+          --body "${{ inputs.body }}" \
+          --label "${{ inputs.label }}" \
+          --type "${{ inputs.type }}" \
+          --state "${{ inputs.state }}")"
+        echo "url=$url" >> "$GITHUB_OUTPUT"
