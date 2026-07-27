@@ -55,8 +55,8 @@ if [ -z "$title" ] || [ -z "$body" ]; then
   exit 1
 fi
 
-url=$(gh issue list --state "$state" --search "$title in:title" \
-  --json title,url --jq "[.[] | select(.title == \"$title\")][0].url // empty")
+url=$(gh issue list --state "$state" --search "$title in:title" --limit 100 --json title,url \
+  | jq -r --arg title "$title" '[.[] | select(.title == $title)][0].url // empty')
 
 if [ -z "$url" ]; then
   args=(--title "$title" --body "$body")
