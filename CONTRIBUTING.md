@@ -29,9 +29,12 @@ actions that other projects can use.
   npx --package @commitlint/cli@21 --package @commitlint/config-conventional@21 \
     commitlint --from origin/main --to HEAD --verbose
 
-  # Workflow and composite action YAML, plus embedded shell scripts
+  # Workflow YAML under .github/workflows/, plus their embedded shell scripts
   # (needs actionlint: https://github.com/rhysd/actionlint, and
-  # shellcheck: https://github.com/koalaman/shellcheck, on your PATH)
+  # shellcheck: https://github.com/koalaman/shellcheck, on your PATH).
+  # actionlint only understands workflow syntax, not standalone composite
+  # action.yml files, so review shell in action.yml files by hand or with
+  # shellcheck directly.
   actionlint
   ```
 
