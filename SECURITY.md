@@ -13,7 +13,7 @@ feature for this repository. Include:
 - Steps to reproduce it, including an affected action and version.
 - Any suggested fix, if you have one.
 
-We aim to acknowledge new reports within 5 business days.
+We acknowledge new reports within 5 business days.
 
 ## Supported Versions
 
