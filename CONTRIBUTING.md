@@ -4,18 +4,19 @@ Thanks for your interest in improving this repository.
 
 ## What to Contribute
 
-Contributions are welcome for bug fixes, documentation improvements, and
-composite actions that are useful across multiple projects.
+You can contribute bug fixes, documentation improvements, and composite
+actions that other projects can use.
 
 ## Before Opening a Pull Request
 
-- Keep changes focused and scoped to a single improvement when possible.
-- Update documentation for any behavior or interface changes.
-- Use commit messages that follow the
-  [Conventional Commits](https://www.conventionalcommits.org/) specification
-  (for example, `fix: ...`, `feat: ...`, `docs: ...`); commit messages are
-  checked with commitlint.
-- Run the same checks the CI lint workflow runs before submitting:
+- Keep each change focused on a single improvement.
+- Update the documentation for any change in behavior or interface.
+- Write commit messages in the
+  [Conventional Commits](https://www.conventionalcommits.org/) format (for
+  example, `fix: ...`, `feat: ...`, `docs: ...`). Commitlint checks this
+  format.
+- Run the same checks the CI lint workflow runs, before you submit the pull
+  request:
 
   ```sh
   # Formatting
@@ -29,16 +30,16 @@ composite actions that are useful across multiple projects.
     commitlint --from origin/main --to HEAD --verbose
 
   # Workflow and composite action YAML, plus embedded shell scripts
-  # (requires actionlint: https://github.com/rhysd/actionlint, and
+  # (needs actionlint: https://github.com/rhysd/actionlint, and
   # shellcheck: https://github.com/koalaman/shellcheck, on your PATH)
   actionlint
   ```
 
 ## Pull Requests
 
-- Use clear commit messages that follow conventional commit style.
-- Describe the problem being solved and summarize the changes made.
-- Include examples or README updates when adding or changing an action.
+- Write a clear commit message in the Conventional Commits format.
+- Describe the problem and summarize your change.
+- Add an example or a README update when you add or change an action.
 
-By contributing to this repository, you agree that your contributions will be
-licensed under the same [MIT License](./LICENSE) that covers the project.
+By contributing to this repository, you agree that the project's
+[MIT License](./LICENSE) covers your contribution.
