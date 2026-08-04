@@ -49,7 +49,8 @@ jobs:
       - name: Add commitlint to PATH
         run: echo "$HOME/.npm-commitlint/bin" >> $GITHUB_PATH
 
-      # To avoid having a package.json maintained in this repo, we just pretend to be a Node project during the run
+      # This repo has no package.json. This symlink lets commitlint find its
+      # config without one.
       - name: Create symlink for commitlint config
         run: |
           mkdir -p node_modules/@commitlint
