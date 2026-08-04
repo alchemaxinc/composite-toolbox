@@ -7,6 +7,7 @@ on:
 jobs:
   update-actions:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Create temporary GitHub App Token
         id: app

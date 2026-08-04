@@ -18,6 +18,7 @@ jobs:
   semantic-release:
     name: Semantic Versioning and Release
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: lint
 
     permissions:
@@ -66,6 +67,7 @@ jobs:
   semantic-release-flowing-tags:
     name: Add flowing tags
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: semantic-release
     if: github.ref == 'refs/heads/main'
 
