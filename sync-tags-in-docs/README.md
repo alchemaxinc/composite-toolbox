@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Sync tags in documentation
         uses: alchemaxinc/composite-toolbox/sync-tags-in-docs@v1.21.0
