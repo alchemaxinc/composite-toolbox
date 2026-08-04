@@ -153,7 +153,10 @@ runs:
         fi
 
         git fetch origin "$TARGET_BRANCH"
-        git checkout "$TARGET_BRANCH"
+        # Force the local branch to match the freshly fetched remote ref,
+        # instead of a plain checkout that could reuse a stale pre-existing
+        # local branch of the same name.
+        git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
 
         case "$MERGE_STRATEGY" in
           merge)
