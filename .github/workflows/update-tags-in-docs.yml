@@ -16,6 +16,10 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: update-tags-in-docs-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   update-docs:
     name: Update Documentation Tags
@@ -32,10 +36,12 @@ jobs:
           client-id: ${{ vars.HOUSEKEEPING_BOT_APP_ID }}
           private-key: ${{ secrets.HOUSEKEEPING_BOT_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
 
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
           fetch-tags: true
           token: ${{ steps.app.outputs.token }}
@@ -52,19 +58,24 @@ jobs:
         run: |
           if [ -n "$INPUT_TAG" ]; then
             TAG="$INPUT_TAG"
+
+            if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::error::Tag '$TAG' is not a full semantic version (e.g., v1.10.2)"
+              exit 1
+            fi
           else
             git fetch --tags
             TAG=$(git describe --tags --match 'v*.*.*' --abbrev=0 2>/dev/null || echo "")
-          fi
 
-          if [ -z "$TAG" ]; then
-            echo "::error::No tag found"
-            exit 1
-          fi
+            if [ -z "$TAG" ]; then
+              echo "::error::No tag found"
+              exit 1
+            fi
 
-          if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::notice::Tag '$TAG' is not a full semantic version, skipping"
-            exit 0
+            if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "::notice::Tag '$TAG' is not a full semantic version, skipping"
+              exit 0
+            fi
           fi
 
           echo "tag=$TAG" >> $GITHUB_OUTPUT
