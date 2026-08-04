@@ -12,9 +12,7 @@ on:
         required: false
         type: string
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
   group: update-tags-in-docs-${{ github.ref }}
