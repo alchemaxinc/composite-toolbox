@@ -41,14 +41,14 @@ jobs:
 
 ## :gear: Inputs
 
-| Input   | Description                                                                     | Required           | Default |
-| ------- | ------------------------------------------------------------------------------- | ------------------ | ------- |
-| `title` | Exact issue title to search for and, if not found, create                       | :white_check_mark: | -       |
-| `body`  | Markdown body to use when creating a new issue                                  | :white_check_mark: | -       |
-| `token` | Token passed to `gh` as `GH_TOKEN` for issue list/create calls                  | :white_check_mark: | -       |
-| `label` | Label to apply when creating a new issue                                        | :x:                | `''`    |
-| `type`  | Issue type to apply when creating a new issue (for example, `Feature` or `Bug`) | :x:                | `''`    |
-| `state` | Issue state to search within (`open` or `all`)                                  | :x:                | `'all'` |
+| Input   | Description                                                                     | Required           | Default  |
+| ------- | ------------------------------------------------------------------------------- | ------------------ | -------- |
+| `title` | Exact issue title to search for and, if not found, create                       | :white_check_mark: | -        |
+| `body`  | Markdown body to use when creating a new issue                                  | :white_check_mark: | -        |
+| `token` | Token passed to `gh` as `GH_TOKEN` for issue list/create calls                  | :white_check_mark: | -        |
+| `label` | Label to apply when creating a new issue                                        | :x:                | `''`     |
+| `type`  | Issue type to apply when creating a new issue (for example, `Feature` or `Bug`) | :x:                | `''`     |
+| `state` | Issue state to search within (`open` or `all`)                                  | :x:                | `'open'` |
 
 ## :outbox_tray: Outputs
 
