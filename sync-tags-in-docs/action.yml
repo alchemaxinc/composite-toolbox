@@ -150,7 +150,7 @@ runs:
         done
 
         # Trim leading space
-        FILES_UPDATED=$(echo "$FILES_UPDATED" | sed 's/^ //')
+        FILES_UPDATED="${FILES_UPDATED# }"
 
         echo "::notice::Updated files: $FILES_UPDATED"
         echo "files_updated=$FILES_UPDATED" >> "$GITHUB_OUTPUT"
