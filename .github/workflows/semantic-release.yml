@@ -6,11 +6,14 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: semantic-release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   lint:
     name: Lint
     uses: ./.github/workflows/lint.yml
-    secrets: inherit
 
   semantic-release:
     name: Semantic Versioning and Release
