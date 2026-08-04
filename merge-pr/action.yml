@@ -23,4 +23,18 @@ runs:
         REPOSITORY: ${{ inputs.repository }}
         MERGE_METHOD: ${{ inputs.merge-method }}
         PULL_REQUEST_NUMBER: ${{ inputs.pull-request-number }}
-      run: gh pr merge -R "$REPOSITORY" "--$MERGE_METHOD" --auto "$PULL_REQUEST_NUMBER"
+      run: |
+        set -euo pipefail
+
+        # Validate the merge method ourselves instead of trusting callers to
+        # run validate-merge-method first, since this value becomes a raw
+        # `gh` CLI flag below.
+        case "$MERGE_METHOD" in
+          merge | squash | rebase) ;;
+          *)
+            echo "::error::Invalid merge-method '$MERGE_METHOD'. Must be one of: merge, squash, rebase."
+            exit 1
+            ;;
+        esac
+
+        gh pr merge -R "$REPOSITORY" "--$MERGE_METHOD" --auto "$PULL_REQUEST_NUMBER"
