@@ -60,6 +60,13 @@ runs:
         echo "::debug::Repository path: $REPO_PATH"
         echo "::debug::New tag: $NEW_TAG"
 
+        # Reject '..' path segments so this action cannot be pointed outside
+        # the checked-out workspace via the folder input.
+        if [[ $FOLDER == *..* ]]; then
+          echo "::error::The 'folder' input '$FOLDER' must not contain '..'. Use a path relative to the repository root."
+          exit 1
+        fi
+
         # Build the find predicate as an array so extensions never need eval.
         # Skip common vendored and VCS directories that this action must not scan.
         FIND_ARGS=(-type f "(")
