@@ -60,8 +60,8 @@ runs:
         echo "::debug::Repository path: $REPO_PATH"
         echo "::debug::New tag: $NEW_TAG"
 
-        # Build the find predicate as an array so extensions never need eval,
-        # and skip common vendored/VCS directories that shouldn't be scanned.
+        # Build the find predicate as an array so extensions never need eval.
+        # Skip common vendored and VCS directories that this action must not scan.
         FIND_ARGS=(-type f "(")
         first=true
         for ext in $EXTENSIONS; do

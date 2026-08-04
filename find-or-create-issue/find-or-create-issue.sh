@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Idempotently finds an existing issue by exact title, or creates a new one.
+# Finds an existing issue by exact title, or creates a new one.
 #
 # This is the backing script for the action.yml composite action in this
-# directory — use `alchemaxinc/composite-toolbox/find-or-create-issue@v1`
-# instead of invoking this script directly (see that action's README for how
-# to file one issue per item detected at runtime via a matrix job).
+# directory. Use `alchemaxinc/composite-toolbox/find-or-create-issue@v1`
+# instead of calling this script directly. See that action's README for how
+# to file one issue per item found at runtime, using a matrix job.
 #
-# Requires GH_TOKEN (or GITHUB_TOKEN) in the environment, as used by `gh`.
-# Prints the resulting issue URL to stdout; progress goes to stderr as
+# Requires GH_TOKEN (or GITHUB_TOKEN) in the environment, as `gh` uses it.
+# Prints the resulting issue URL to stdout. Progress goes to stderr as
 # workflow annotations.
 #
 # Usage:

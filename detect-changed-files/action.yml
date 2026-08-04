@@ -44,7 +44,7 @@ runs:
           exit 1
         fi
 
-        # The base commit must be present locally; check out with 'fetch-depth: 0'.
+        # The base commit must be present locally. Check out with 'fetch-depth: 0'.
         if ! git rev-parse --verify --quiet "${BASE}^{commit}" >/dev/null; then
           echo "::error::Base ref '$BASE' was not found. Check out with 'fetch-depth: 0' or pass a fetched 'base'."
           exit 1
