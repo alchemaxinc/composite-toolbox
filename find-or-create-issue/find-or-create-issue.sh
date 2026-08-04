@@ -75,11 +75,21 @@ if [ -z "$title" ] || [ -z "$body" ]; then
   exit 1
 fi
 
-url=$(gh issue list --state "$state" --search "$title in:title" --limit 1000 --json title,url \
+# Pass --repo explicitly instead of relying on gh inferring it from the
+# current directory's git remote, so this script works even when the
+# caller has not checked out the repository.
+repo_args=()
+[ -n "${GITHUB_REPOSITORY:-}" ] && repo_args+=(--repo "$GITHUB_REPOSITORY")
+
+# Omit the free-text --search filter and let jq do exact matching
+# instead: GitHub's search query syntax treats characters like '"' and
+# ':' specially, so an unescaped title containing them could return
+# zero candidates and cause a duplicate issue to be filed.
+url=$(gh issue list "${repo_args[@]}" --state "$state" --limit 1000 --json title,url \
   | jq -r --arg title "$title" '[.[] | select(.title == $title)][0].url // empty')
 
 if [ -z "$url" ]; then
-  args=(--title "$title" --body "$body")
+  args=("${repo_args[@]}" --title "$title" --body "$body")
   [ -n "$label" ] && args+=(--label "$label")
   [ -n "$type" ] && args+=(--type "$type")
   url=$(gh issue create "${args[@]}")
