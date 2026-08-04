@@ -3,7 +3,7 @@
 This GitHub Action creates a new branch, commits specified files, and opens a pull request with the changes.
 
 > [!IMPORTANT]
-> This action creates a branch name by combining the `branch-prefix` with either a custom `branch-postfix` (if provided) or a unique timestamp and run ID (to avoid conflicts). It requires the GitHub CLI to be available in the runner environment.
+> This action creates a branch name by combining the `branch-prefix` with either a custom `branch-postfix` (if provided) or a unique timestamp and run ID (to avoid conflicts). It requires the GitHub CLI to be available in the runner environment. The branch is pushed with `--force-with-lease`, so if a branch with the same name already has commits from somewhere else, the push fails instead of overwriting them.
 
 ## :rocket: Usage
 
