@@ -1,6 +1,6 @@
 name: 'Find or Create Issue'
 
-description: 'Idempotently find an existing issue by exact title, or create a new one'
+description: 'Find an existing issue by exact title, or create a new one'
 
 inputs:
   title:
@@ -23,7 +23,7 @@ inputs:
   type:
     required: false
     default: ''
-    description: 'Issue type to apply when creating a new issue (e.g. "Feature", "Bug")'
+    description: 'Issue type to apply when creating a new issue (for example, "Feature" or "Bug")'
 
   state:
     required: false
