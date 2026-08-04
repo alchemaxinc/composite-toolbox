@@ -88,7 +88,7 @@ jobs:
 | ---------- | ----------------------------------------------------------------------------------------------- | -------- | --------------------- |
 | `token`    | GitHub token for authentication                                                                 | :x:      | `${{ github.token }}` |
 | `app-slug` | GitHub App slug (e.g., `my-app`). If provided, configures git as the app bot instead of default | :x:      | `''`                  |
-| `ref`      | Git ref (branch, tag, or SHA) to check out. Defaults to `actions/checkout`'s own behavior        | :x:      | `''`                  |
+| `ref`      | Git ref (branch, tag, or SHA) to check out. Defaults to `actions/checkout`'s own behavior       | :x:      | `''`                  |
 | `shallow`  | If `true`, performs shallow checkout. If `false`, fetches full history with tags                | :x:      | `'true'`              |
 
 ## :warning: Prerequisites
