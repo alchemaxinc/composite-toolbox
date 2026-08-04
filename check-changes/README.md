@@ -1,7 +1,8 @@
 # Check Changes :mag:
 
 This action checks the working directory for changes to the files you list.
-It uses `git diff`.
+It uses `git status --porcelain`, so it detects staged changes, unstaged
+changes, and new untracked files.
 
 > [!IMPORTANT]  
 > This action only checks for uncommitted changes in the working directory. It does not compare between different

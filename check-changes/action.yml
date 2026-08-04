@@ -31,18 +31,21 @@ runs:
           read -r -a FILES_ARR <<<"$FILES"
         fi
 
+        # Use `git status --porcelain` instead of `git diff` so staged
+        # changes and new untracked files are detected too, not just
+        # unstaged modifications to already-tracked files.
         # Use -- to separate revisions from pathspecs for safety.
-        # Capture stderr to show git errors directly
-        DIFF_OUTPUT=$(git diff -- "${FILES_ARR[@]}" 2>&1)
-        GIT_EXIT_CODE=$?
-
-        if [ $GIT_EXIT_CODE -ne 0 ]; then
-          echo "::error::git diff failed with exit code $GIT_EXIT_CODE:"
-          echo "$DIFF_OUTPUT" >&2
-          exit $GIT_EXIT_CODE
+        # A composite action's `shell: bash` already runs with `-e`, so
+        # check the command's own exit status via `if !` rather than `$?`
+        # after the fact, which never runs once `-e` aborts the step.
+        if ! STATUS_OUTPUT=$(git status --porcelain -- "${FILES_ARR[@]}" 2>&1); then
+          GIT_EXIT_CODE=$?
+          echo "::error::git status failed with exit code $GIT_EXIT_CODE:"
+          echo "$STATUS_OUTPUT" >&2
+          exit "$GIT_EXIT_CODE"
         fi
 
-        if [ -z "$DIFF_OUTPUT" ]; then
+        if [ -z "$STATUS_OUTPUT" ]; then
           echo "::debug::No changes detected"
           echo "has_changes=false" >> $GITHUB_OUTPUT
           exit 0
