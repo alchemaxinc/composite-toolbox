@@ -1,6 +1,6 @@
 name: 'Detect Changed Files'
 
-description: 'Check whether files matching given pathspecs changed between a base ref and HEAD, e.g. across a pull request'
+description: 'Check whether files matching given pathspecs changed between a base ref and HEAD, for example, across a pull request'
 
 inputs:
   files:
@@ -53,7 +53,7 @@ runs:
         echo "::debug::Comparing ${BASE}...HEAD for pathspecs: ${FILES:-<all>}"
 
         # Split the input on whitespace into an array of pathspecs and pass them quoted so
-        # Bash won't expand globs (e.g. '*.go') before git evaluates the pathspec.
+        # Bash does not expand globs (for example, '*.go') before git evaluates the pathspec.
         FILES_ARR=()
         if [ -n "$FILES" ]; then
           read -r -a FILES_ARR <<<"$FILES"
