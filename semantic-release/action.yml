@@ -65,25 +65,24 @@ runs:
       if: steps.cache-sr.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        npm config set prefix ~/.npm-global
+        npm config set prefix "$HOME/.npm-global"
 
         # Extract plugin names from .releaserc
         PLUGINS=$(jq -r '.plugins[] | if type == "string" then . else .[0] end' .releaserc* 2>/dev/null || echo "")
 
-        # Build the npm install command with semantic-release and all plugins
-        INSTALL_CMD="npm install -g semantic-release"
+        # Build the package list with semantic-release and all plugins
+        PACKAGES=(semantic-release)
         if [ -n "$PLUGINS" ]; then
           while IFS= read -r plugin; do
-            [ -n "$plugin" ] && INSTALL_CMD="$INSTALL_CMD $plugin"
+            [ -n "$plugin" ] && PACKAGES+=("$plugin")
           done <<< "$PLUGINS"
         fi
 
-        # Execute the install command
-        eval "$INSTALL_CMD"
+        npm install -g "${PACKAGES[@]}"
 
     - name: Add ~/.npm-global/bin to PATH
       shell: bash
-      run: echo "~/.npm-global/bin" >> $GITHUB_PATH
+      run: echo "$HOME/.npm-global/bin" >> "$GITHUB_PATH"
 
     - name: Capture pre-existing tags at HEAD
       id: pre-release-tags
