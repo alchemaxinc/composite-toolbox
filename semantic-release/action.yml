@@ -120,35 +120,47 @@ runs:
         fi
 
     - name: Backmerge to develop
-      if: inputs.enable-backmerge == 'true' && github.ref == format('refs/heads/{0}', inputs.source-branch)
+      if: >-
+        inputs.enable-backmerge == 'true' &&
+        github.ref == format('refs/heads/{0}', inputs.source-branch) &&
+        steps.release.outputs.tag != ''
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
         MERGE_STRATEGY: ${{ inputs.merge-strategy }}
+        SOURCE_BRANCH: ${{ inputs.source-branch }}
+        TARGET_BRANCH: ${{ inputs.backmerge-target-branch }}
       run: |
         if [[ "$MERGE_STRATEGY" != "merge" && "$MERGE_STRATEGY" != "squash" && "$MERGE_STRATEGY" != "rebase" ]]; then
           echo "::error::Invalid merge-strategy '$MERGE_STRATEGY'. Supported values: merge, squash, rebase"
           exit 1
         fi
 
-        git fetch origin ${{ inputs.backmerge-target-branch }}
-        git checkout ${{ inputs.backmerge-target-branch }}
+        git fetch origin "$TARGET_BRANCH"
+        git checkout "$TARGET_BRANCH"
 
         case "$MERGE_STRATEGY" in
           merge)
-            git merge ${{ inputs.source-branch }} --no-ff -m "chore: backmerge ${{ inputs.source-branch }} after release"
+            git merge "$SOURCE_BRANCH" --no-ff -m "chore: backmerge $SOURCE_BRANCH after release"
             ;;
           squash)
-            git merge ${{ inputs.source-branch }} --squash
+            git merge "$SOURCE_BRANCH" --squash
             if git diff --cached --quiet; then
               echo "::notice::No changes to commit after squash merge — branches are already in sync"
               exit 0
             fi
-            git commit -m "chore: backmerge ${{ inputs.source-branch }} after release"
+            git commit -m "chore: backmerge $SOURCE_BRANCH after release"
             ;;
           rebase)
-            git rebase ${{ inputs.source-branch }}
+            git rebase "$SOURCE_BRANCH"
             ;;
         esac
 
-        git push origin ${{ inputs.backmerge-target-branch }}
+        if [ "$MERGE_STRATEGY" = "rebase" ]; then
+          # Rebase rewrites the target branch's history, so a plain push would
+          # be rejected as non-fast-forward. force-with-lease still fails
+          # safely if someone else pushed to the target branch meanwhile.
+          git push --force-with-lease origin "$TARGET_BRANCH"
+        else
+          git push origin "$TARGET_BRANCH"
+        fi
