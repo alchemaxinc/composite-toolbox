@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to update documentation to (e.g., v1.10.2)'
+        description: 'Tag to update documentation to (for example, v1.10.2)'
         required: false
         type: string
 
@@ -61,7 +61,7 @@ jobs:
             TAG="$INPUT_TAG"
 
             if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              echo "::error::Tag '$TAG' is not a full semantic version (e.g., v1.10.2)"
+              echo "::error::Tag '$TAG' is not a full semantic version (for example, v1.10.2)"
               exit 1
             fi
           else
