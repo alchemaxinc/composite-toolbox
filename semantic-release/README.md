@@ -145,7 +145,8 @@ This action uses semantic-release. Your commits must follow the
 ## :bulb: Features
 
 - **Automatic Caching**: Caches semantic-release and its plugins based on
-  `package.json`/`package-lock.json` to speed up later runs.
+  `package.json`, `package-lock.json`, and any `.releaserc*` file to speed up
+  later runs.
 - **Dynamic Git Identity**: Resolves the git committer identity from the
   provided token. Supports GitHub App tokens, PATs, and the default
   `GITHUB_TOKEN`.
