@@ -1,13 +1,13 @@
 # Find or Create Issue :mag:
 
-This GitHub Action idempotently finds an existing issue by exact title, or
-creates a new one. Use it in scheduled workflows that alert on a recurring
-condition (e.g. a failing dependency audit) so repeated runs reuse one issue
-instead of filing a duplicate every time.
+This action finds an existing issue by exact title, or creates a new one. The
+search is idempotent: repeated runs reuse one issue instead of filing a new
+one each time. Use it in scheduled workflows that alert on a recurring
+condition, for example a failing dependency audit.
 
-> [!IMPORTANT]  
-> `uses:` steps are static and can't run in a bash loop. If you need to file
-> one issue per item detected at runtime, use a matrix job instead — see
+> [!IMPORTANT]
+> A `uses:` step is static. It cannot run inside a Bash loop. If you need to
+> file one issue per item found at runtime, use a matrix job instead. See
 > [Filing one issue per detected item](#repeat-filing-one-issue-per-detected-item)
 > below.
 
@@ -65,9 +65,10 @@ jobs:
 
 ## :repeat: Filing one issue per detected item
 
-`uses:` steps are static and can't run in a bash loop, so to file one issue
-per item detected at runtime, use a matrix job instead — one job instance per
-item, each calling this action directly like any other `uses:` step:
+A `uses:` step is static and cannot run inside a Bash loop. To file one issue
+per item found at runtime, use a matrix job instead: one job instance per
+item, and each instance calls this action directly, like any other `uses:`
+step:
 
 ```yaml
 jobs:
@@ -96,9 +97,10 @@ jobs:
           label: enhancement
 ```
 
-If a later job needs the filed issue URLs (e.g. to update a support matrix
-file), have each matrix job upload its result as an artifact named uniquely
-per item, then download and merge them all in the downstream job with
+If a later job needs the filed issue URLs, for example to update a support
+matrix file, have each matrix job upload its result as an artifact with a
+unique name per item. Then download and merge them in the downstream job with
 [`actions/download-artifact`](https://github.com/actions/download-artifact)'s
-`pattern` and `merge-multiple` inputs — matrix job outputs aren't aggregated
-across instances, so `needs.<job>.outputs` alone won't expose every result.
+`pattern` and `merge-multiple` inputs. Matrix job outputs are not aggregated
+across instances, so `needs.<job>.outputs` alone does not expose every
+result.
