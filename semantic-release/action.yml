@@ -67,8 +67,24 @@ runs:
       run: |
         npm config set prefix "$HOME/.npm-global"
 
-        # Extract plugin names from .releaserc
-        PLUGINS=$(jq -r '.plugins[] | if type == "string" then . else .[0] end' .releaserc* 2>/dev/null || echo "")
+        # Extract plugin names from a JSON releaserc config. jq can only
+        # parse JSON, so a YAML/JS config (or a '.releaserc' that turns out
+        # to be YAML) produces a warning below instead of silently
+        # installing zero plugins.
+        CONFIG_FILE=""
+        for candidate in .releaserc.json .releaserc; do
+          if [ -f "$candidate" ]; then
+            CONFIG_FILE="$candidate"
+            break
+          fi
+        done
+
+        PLUGINS=""
+        if [ -n "$CONFIG_FILE" ] && jq -e . "$CONFIG_FILE" >/dev/null 2>&1; then
+          PLUGINS=$(jq -r '.plugins[]? | if type == "string" then . else .[0] end' "$CONFIG_FILE")
+        elif [ -n "$CONFIG_FILE" ] || compgen -G ".releaserc.*" >/dev/null || { [ -f package.json ] && jq -e '.release' package.json >/dev/null 2>&1; }; then
+          echo "::warning::Found a semantic-release config this action cannot parse for plugins (only JSON .releaserc/.releaserc.json are read). Only semantic-release itself will be installed, so any configured plugins will fail to load. Add a .releaserc.json, or install the plugins yourself before this step."
+        fi
 
         # Build the package list with semantic-release and all plugins
         PACKAGES=(semantic-release@25)
