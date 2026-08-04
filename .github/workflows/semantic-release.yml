@@ -51,10 +51,10 @@ jobs:
         run: |
           npm config set prefix ~/.npm-semantic-release
           npm install -g \
-            semantic-release \
-            @semantic-release/commit-analyzer \
-            @semantic-release/release-notes-generator \
-            @semantic-release/github
+            semantic-release@25 \
+            @semantic-release/commit-analyzer@13 \
+            @semantic-release/release-notes-generator@14 \
+            @semantic-release/github@12
 
       - name: Add semantic-release to PATH
         run: echo "$HOME/.npm-semantic-release/bin" >> $GITHUB_PATH

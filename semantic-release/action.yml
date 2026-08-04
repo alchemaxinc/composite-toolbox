@@ -71,7 +71,7 @@ runs:
         PLUGINS=$(jq -r '.plugins[] | if type == "string" then . else .[0] end' .releaserc* 2>/dev/null || echo "")
 
         # Build the package list with semantic-release and all plugins
-        PACKAGES=(semantic-release)
+        PACKAGES=(semantic-release@25)
         if [ -n "$PLUGINS" ]; then
           while IFS= read -r plugin; do
             [ -n "$plugin" ] && PACKAGES+=("$plugin")
