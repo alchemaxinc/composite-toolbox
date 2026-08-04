@@ -31,7 +31,7 @@ jobs:
           fetch-tags: true
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get current year and month month for caching
+      - name: Get current year and month for caching
         id: date
         run: echo "month_year=$(date +'%m-%Y')" >> $GITHUB_OUTPUT
 
