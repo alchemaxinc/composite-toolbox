@@ -18,6 +18,9 @@ runs:
   steps:
     - name: Enable automerge
       shell: bash
-      run: gh pr merge -R "${{ inputs.repository }}" --${{ inputs.merge-method }} --auto "${{ inputs.pull-request-number }}"
       env:
         GH_TOKEN: ${{ inputs.token }}
+        REPOSITORY: ${{ inputs.repository }}
+        MERGE_METHOD: ${{ inputs.merge-method }}
+        PULL_REQUEST_NUMBER: ${{ inputs.pull-request-number }}
+      run: gh pr merge -R "$REPOSITORY" "--$MERGE_METHOD" --auto "$PULL_REQUEST_NUMBER"
