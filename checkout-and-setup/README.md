@@ -88,6 +88,7 @@ jobs:
 | ---------- | ----------------------------------------------------------------------------------------------- | -------- | --------------------- |
 | `token`    | GitHub token for authentication                                                                 | :x:      | `${{ github.token }}` |
 | `app-slug` | GitHub App slug (e.g., `my-app`). If provided, configures git as the app bot instead of default | :x:      | `''`                  |
+| `ref`      | Git ref (branch, tag, or SHA) to check out. Defaults to `actions/checkout`'s own behavior        | :x:      | `''`                  |
 | `shallow`  | If `true`, performs shallow checkout. If `false`, fetches full history with tags                | :x:      | `'true'`              |
 
 ## :warning: Prerequisites
@@ -102,5 +103,8 @@ When no `app-slug` is provided, the action automatically resolves the git commit
 - **GitHub App tokens** → Commits are attributed to the app's bot account (e.g., `my-app[bot]`)
 - **Personal Access Tokens** → Commits are attributed to the token owner
 - **Default `GITHUB_TOKEN`** → Commits are attributed to `github-actions[bot]`
+
+If the token cannot be resolved to an identity (for example, it is invalid
+or expired), the step fails instead of falling back to a default identity.
 
 When `app-slug` is provided, the identity is configured explicitly from the slug.
