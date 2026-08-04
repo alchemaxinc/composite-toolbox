@@ -92,9 +92,9 @@ jobs:
       - name: Is tag semantic?
         id: is-tag-semantic
         if: steps.latest-tag.outputs.tag != ''
+        env:
+          TAG: ${{ steps.latest-tag.outputs.tag }}
         run: |
-          TAG="${{ steps.latest-tag.outputs.tag }}"
-
           # Skip if tag does not match the semantic version pattern
           if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::debug::Tag $TAG does not match semantic version pattern, skipping moving tags"
@@ -108,8 +108,9 @@ jobs:
       - name: Extract version tag
         id: major-minor-tags
         if: ${{ steps.is-tag-semantic.outputs.semantic == 'true' }}
+        env:
+          TAG: ${{ steps.is-tag-semantic.outputs.semantic-tag }}
         run: |
-          TAG="${{ steps.is-tag-semantic.outputs.semantic-tag }}"
           VERSION=${TAG#v}
           IFS='.' read -ra VERSION_PARTS <<< "$VERSION"
           MAJOR=${VERSION_PARTS[0]}
@@ -123,9 +124,9 @@ jobs:
         if: ${{ steps.is-tag-semantic.outputs.semantic == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.is-tag-semantic.outputs.semantic-tag }}
+          MAJOR: ${{ steps.major-minor-tags.outputs.major }}
         run: |
-          TAG="${{ steps.is-tag-semantic.outputs.semantic-tag }}"
-          MAJOR="${{ steps.major-minor-tags.outputs.major }}"
           MAJOR_TAG="v$MAJOR"
           echo "::debug::Creating/updating tag $MAJOR_TAG to point to $TAG"
           git tag -f "$MAJOR_TAG" "$TAG"
@@ -136,10 +137,10 @@ jobs:
         if: ${{ steps.is-tag-semantic.outputs.semantic == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.is-tag-semantic.outputs.semantic-tag }}
+          MAJOR: ${{ steps.major-minor-tags.outputs.major }}
+          MINOR: ${{ steps.major-minor-tags.outputs.minor }}
         run: |
-          TAG="${{ steps.is-tag-semantic.outputs.semantic-tag }}"
-          MAJOR="${{ steps.major-minor-tags.outputs.major }}"
-          MINOR="${{ steps.major-minor-tags.outputs.minor }}"
           MINOR_TAG="v$MAJOR.$MINOR"
           echo "::debug::Creating/updating tag $MINOR_TAG to point to $TAG"
           git tag -f "$MINOR_TAG" "$TAG"
