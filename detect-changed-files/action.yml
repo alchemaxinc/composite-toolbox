@@ -28,15 +28,16 @@ runs:
     - name: Detect changed files
       id: detect
       shell: bash
+      env:
+        FILES: ${{ inputs.files }}
+        BASE: ${{ inputs.base }}
+        PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
       run: |
         set -euo pipefail
 
-        FILES="${{ inputs.files }}"
-        BASE="${{ inputs.base }}"
-
         # Fall back to the pull request base commit when no base is supplied.
         if [ -z "$BASE" ]; then
-          BASE="${{ github.event.pull_request.base.sha }}"
+          BASE="$PR_BASE_SHA"
         fi
 
         if [ -z "$BASE" ]; then
