@@ -54,7 +54,9 @@ jobs:
           ln -sf ~/.npm-commitlint/lib/node_modules/@commitlint/config-conventional node_modules/@commitlint/config-conventional
 
       - name: Run commitlint on all commits
-        run: commitlint --from origin/main --to HEAD --verbose
+        env:
+          FROM_REF: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+        run: commitlint --from "$FROM_REF" --to HEAD --verbose
 
   prettier:
     name: Formatting
