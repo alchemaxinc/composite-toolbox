@@ -35,8 +35,8 @@ jobs:
 ## :warning: Prerequisites
 
 - The repository must have auto-merge enabled (**Settings → General → Allow
-  auto-merge**)
-- The token must have permission to update the pull request
-- Consider pairing this action with
-  [validate-merge-method](../validate-merge-method/) to validate the
-  `merge-method` input before use
+  auto-merge**).
+- The token must have permission to update the pull request.
+- Pair this action with
+  [validate-merge-method](../validate-merge-method/) to check the
+  `merge-method` input before use.
