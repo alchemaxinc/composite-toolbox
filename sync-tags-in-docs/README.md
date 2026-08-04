@@ -4,8 +4,8 @@ This GitHub Action updates GitHub action tags in documentation files to match th
 file types for `uses: org/repo/action@vX` patterns and replaces the tag with the provided full semantic version.
 
 > [!IMPORTANT]
-> The `current-tag` input must be a full semantic version with `v` prefix (e.g., `v1.10.2`). All existing tag
-> references will be replaced with this exact tag regardless of their current format (`@v1`, `@v1.2`, `@v1.2.3`).
+> The `current-tag` input must be a full semantic version with `v` prefix (e.g., `v1.10.2`, `v1.10.2-beta.1`). All
+> existing tag references will be replaced with this exact tag regardless of their current format (`@v1`, `@v1.2`, `@v1.2.3`).
 
 ## :rocket: Usage
 
