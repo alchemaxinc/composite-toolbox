@@ -41,3 +41,13 @@ jobs:
 | Output   | Description                                                     |
 | -------- | --------------------------------------------------------------- |
 | `exists` | Whether a matching open pull request exists (`true` or `false`) |
+
+## :warning: Prerequisites
+
+- The token must have at least `pull-requests: read` permission on the
+  target repository, for example:
+
+  ```yaml
+  permissions:
+    pull-requests: read
+  ```
