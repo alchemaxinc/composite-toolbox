@@ -2,11 +2,14 @@
 
 ![Composite Toolbox](./docs/logo.png)
 
-A collection of reusable GitHub Actions designed to simplify common workflow tasks. This repository serves as a toolbox of composite actions that you can easily integrate into your own workflows for convenience.
+This repository is a collection of reusable GitHub Actions. Each action is a
+composite action you can add to your own workflows to handle a common task.
 
 ## 🎯 Purpose
 
-This is a helper toolbox for [alchemaxinc/update-deps](https://github.com/alchemaxinc/update-deps); contributions and usage are welcome.
+This repository is a helper toolbox for
+[alchemaxinc/update-deps](https://github.com/alchemaxinc/update-deps).
+Contributions and use by other projects are welcome.
 
 ## 📦 Available Actions
 
@@ -23,9 +26,9 @@ This is a helper toolbox for [alchemaxinc/update-deps](https://github.com/alchem
 
 ## 🤝 Contributing
 
-Contributions are welcome! If you have ideas for additional composite actions
-that would be useful across multiple projects, please review the
-[contributing guide](./CONTRIBUTING.md) and open a pull request.
+Contributions are welcome. If you have an idea for a new composite action
+that other projects can use, read the [contributing guide](./CONTRIBUTING.md).
+Then open a pull request.
 
 ## 📄 License
 
