@@ -46,8 +46,10 @@ runs:
   steps:
     - name: Validate inputs
       shell: bash
+      env:
+        FILES_TO_ADD: ${{ inputs.files }}
       run: |
-        if [ -z "${{ inputs.files }}" ] || [ "${{ inputs.files }}" = "" ]; then
+        if [ -z "$FILES_TO_ADD" ]; then
           echo "::error::The 'files' input cannot be empty. It represents files to add with 'git add'. If you meant to add all files, use '.' as the files input."
           exit 1
         fi
@@ -58,18 +60,24 @@ runs:
         GH_TOKEN: ${{ inputs.token }}
         FILES_TO_ADD: ${{ inputs.files }}
         COMMIT_MESSAGE: ${{ inputs.commit-message }}
+        BRANCH_PREFIX: ${{ inputs.branch-prefix }}
+        BRANCH_POSTFIX: ${{ inputs.branch-postfix }}
+        RUN_ID: ${{ github.run_id }}
       run: |
-        if [ -z "${{ inputs.branch-postfix }}" ]; then
-          BRANCH_NAME="${{ inputs.branch-prefix }}-$(date +%Y%m%d)-${{ github.run_id }}"
+        if [ -z "$BRANCH_POSTFIX" ]; then
+          BRANCH_NAME="${BRANCH_PREFIX}-$(date +%Y%m%d)-${RUN_ID}"
         else
-          BRANCH_NAME="${{ inputs.branch-prefix }}-${{ inputs.branch-postfix }}"
+          BRANCH_NAME="${BRANCH_PREFIX}-${BRANCH_POSTFIX}"
         fi
 
         echo "::debug::Creating branch: $BRANCH_NAME"
         git checkout -b "$BRANCH_NAME"
 
         echo "::debug::Adding files: $FILES_TO_ADD"
-        git add $FILES_TO_ADD
+        # Split on whitespace into an array so each pathspec (which may
+        # include globs such as '*.json') reaches git add unmodified.
+        read -r -a FILES_ARR <<<"$FILES_TO_ADD"
+        git add -- "${FILES_ARR[@]}"
 
         if git diff --cached --quiet; then
           echo "::notice::No changes to commit — pushing branch as-is (e.g. backmerge scenario)"
@@ -79,7 +87,7 @@ runs:
         fi
 
         echo "::debug::Pushing branch $BRANCH_NAME to origin"
-        git push --force origin "$BRANCH_NAME"
+        git push --force-with-lease origin "$BRANCH_NAME"
 
         # Set branch name for next step
         echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
