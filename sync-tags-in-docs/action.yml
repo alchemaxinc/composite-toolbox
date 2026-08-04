@@ -6,11 +6,11 @@ inputs:
   file-extensions:
     required: false
     default: '.md'
-    description: 'Space-separated list of file extensions to scan (e.g., ".md .txt")'
+    description: 'Space-separated list of file extensions to scan (for example, ".md .txt")'
 
   github-repo-path:
     required: true
-    description: 'GitHub repository path (e.g., "alchemaxinc/update-deps")'
+    description: 'GitHub repository path (for example, "alchemaxinc/update-deps")'
 
   folder:
     required: false
@@ -19,7 +19,7 @@ inputs:
 
   current-tag:
     required: true
-    description: 'Current GitHub tag to update to (e.g., "v1.10.2")'
+    description: 'Current GitHub tag to update to (for example, "v1.10.2")'
 
 outputs:
   files_updated:
@@ -38,7 +38,7 @@ runs:
         echo "::debug::Validating tag: $TAG"
 
         if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
-          echo "::error::Tag '$TAG' must be a full semantic version with v prefix (e.g., v1.10.2, v1.10.2-beta.1)"
+          echo "::error::Tag '$TAG' must be a full semantic version with v prefix (for example, v1.10.2 or v1.10.2-beta.1)"
           exit 1
         fi
 
