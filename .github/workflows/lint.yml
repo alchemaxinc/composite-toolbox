@@ -147,3 +147,26 @@ jobs:
         uses: reviewdog/action-actionlint@v1
         with:
           fail_level: error
+
+  shellcheck:
+    name: Shell Scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run ShellCheck on standalone scripts
+        run: shellcheck scripts/*.sh find-or-create-issue/*.sh
+
+      - name: Install PyYAML
+        run: pip install --quiet pyyaml
+
+      # actionlint (above) only understands workflow syntax, so it cannot
+      # check the shell embedded in composite action.yml files. This
+      # extracts and runs ShellCheck against those run: blocks instead.
+      - name: Run ShellCheck on composite action shell blocks
+        run: python3 scripts/shellcheck-composite-actions.py
