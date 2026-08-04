@@ -28,7 +28,6 @@ jobs:
     permissions:
       issues: write
       contents: write
-      id-token: write
       pull-requests: write
 
     steps:
@@ -57,7 +56,6 @@ jobs:
     permissions:
       issues: write
       contents: write
-      id-token: write
       pull-requests: write
 
     steps:
@@ -115,7 +113,6 @@ The workflow must have the following permissions:
 permissions:
   issues: write # For commenting on issues
   contents: write # For creating releases and pushing tags
-  id-token: write # For OIDC token if needed
   pull-requests: write # For commenting on PRs
 ```
 
