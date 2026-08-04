@@ -1,6 +1,6 @@
 {
   "language": "en",
-  "words": ["alchemaxinc", "pathspec", "pathspecs", "esac", "Bbot"],
+  "words": ["alchemaxinc", "Alchemax", "pathspec", "pathspecs", "esac", "Bbot"],
   "files": ["*.md", "*/**/*.md", "*.yml", "*/**/*.yml", "*.sh", "*/**/*.sh"],
   "ignoreWords": ["releaserc"],
   "ignorePaths": [],
