@@ -18,6 +18,7 @@ This is a helper toolbox for [alchemaxinc/update-deps](https://github.com/alchem
 - **[find-or-create-issue](./find-or-create-issue/)** - Idempotently find an existing issue by title, or create a new one
 - **[merge-pr](./merge-pr/)** - Enable auto-merge on a pull request
 - **[semantic-release](./semantic-release/)** - Run semantic-release with caching and optional backmerge support
+- **[sync-tags-in-docs](./sync-tags-in-docs/)** - Update GitHub action tags in documentation files to match the current version
 - **[validate-merge-method](./validate-merge-method/)** - Validate merge-method input (`merge`, `squash`, `rebase`)
 
 ## 🤝 Contributing
