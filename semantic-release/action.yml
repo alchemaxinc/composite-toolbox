@@ -4,10 +4,10 @@ description: 'Run semantic-release with caching and optional backmerge support'
 
 outputs:
   version:
-    description: 'The version of the new release (e.g., 1.2.3), empty if no release was made'
+    description: 'The version of the new release (for example, 1.2.3), empty if no release was made'
     value: ${{ steps.release.outputs.version }}
   tag:
-    description: 'The git tag of the new release (e.g., v1.2.3), empty if no release was made'
+    description: 'The git tag of the new release (for example, v1.2.3), empty if no release was made'
     value: ${{ steps.release.outputs.tag }}
 
 inputs:
@@ -107,7 +107,7 @@ runs:
         git fetch --tags origin
         # Only emit a tag when semantic-release actually created a new one at HEAD.
         # Comparing against the pre-existing tag set prevents picking up tags that
-        # were created by a prior workflow run on a different branch (e.g. a main
+        # were created by a prior workflow run on a different branch (for example, a main
         # release tag that became visible on develop after a backmerge of the same
         # commit).
         BEFORE_SORTED=$(printf '%s\n' "$TAGS_BEFORE" | tr ',' '\n' | sort -u)
