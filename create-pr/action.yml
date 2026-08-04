@@ -5,43 +5,35 @@ description: 'Create PR with dependency updates'
 inputs:
   token:
     required: true
-    type: string
     description: 'GitHub token'
 
   base-branch:
     required: true
-    type: string
     description: 'Base branch for PR'
 
   branch-prefix:
     required: true
-    type: string
     description: 'Prefix for new branch'
 
   branch-postfix:
     required: false
-    type: string
     description: 'Postfix for new branch, defaults to a unique string on each run to avoid overwrites of existing branches'
     default: ''
 
   files:
     required: true
-    type: string
     description: 'Files to commit'
 
   commit-message:
     required: true
-    type: string
     description: 'Message the commit will have'
 
   pr-title:
     required: true
-    type: string
     description: 'Title of the pull request'
 
   pr-body:
     required: true
-    type: string
     description: 'The Markdown-supported body for the Github pull request'
 
 outputs:
