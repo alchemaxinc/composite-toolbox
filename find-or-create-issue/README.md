@@ -3,7 +3,7 @@
 This action finds an existing issue by exact title, or creates a new one. The
 search is idempotent: repeated runs reuse one issue instead of filing a new
 one each time. Use it in scheduled workflows that alert on a recurring
-condition, for example a failing dependency audit.
+condition, for example, a failing dependency audit.
 
 > [!IMPORTANT]
 > A `uses:` step is static. It cannot run inside a Bash loop. If you need to
@@ -41,14 +41,14 @@ jobs:
 
 ## :gear: Inputs
 
-| Input   | Description                                                           | Required           | Default |
-| ------- | --------------------------------------------------------------------- | ------------------ | ------- |
-| `title` | Exact issue title to search for and, if not found, create             | :white_check_mark: | -       |
-| `body`  | Markdown body to use when creating a new issue                        | :white_check_mark: | -       |
-| `token` | Token passed to `gh` as `GH_TOKEN` for issue list/create calls        | :white_check_mark: | -       |
-| `label` | Label to apply when creating a new issue                              | :x:                | `''`    |
-| `type`  | Issue type to apply when creating a new issue (e.g. `Feature`, `Bug`) | :x:                | `''`    |
-| `state` | Issue state to search within (`open` or `all`)                        | :x:                | `'all'` |
+| Input   | Description                                                                     | Required           | Default |
+| ------- | ------------------------------------------------------------------------------- | ------------------ | ------- |
+| `title` | Exact issue title to search for and, if not found, create                       | :white_check_mark: | -       |
+| `body`  | Markdown body to use when creating a new issue                                  | :white_check_mark: | -       |
+| `token` | Token passed to `gh` as `GH_TOKEN` for issue list/create calls                  | :white_check_mark: | -       |
+| `label` | Label to apply when creating a new issue                                        | :x:                | `''`    |
+| `type`  | Issue type to apply when creating a new issue (for example, `Feature` or `Bug`) | :x:                | `''`    |
+| `state` | Issue state to search within (`open` or `all`)                                  | :x:                | `'all'` |
 
 ## :outbox_tray: Outputs
 
@@ -75,7 +75,7 @@ jobs:
   detect:
     runs-on: ubuntu-latest
     outputs:
-      items: ${{ steps.detect.outputs.items }} # JSON array, e.g. '["a","b"]'
+      items: ${{ steps.detect.outputs.items }} # JSON array, for example, '["a","b"]'
     steps:
       - name: Detect items
         id: detect

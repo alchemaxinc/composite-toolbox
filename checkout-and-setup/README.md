@@ -86,12 +86,12 @@ jobs:
 
 ## :gear: Inputs
 
-| Input      | Description                                                                                     | Required | Default               |
-| ---------- | ----------------------------------------------------------------------------------------------- | -------- | --------------------- |
-| `token`    | GitHub token for authentication                                                                 | :x:      | `${{ github.token }}` |
-| `app-slug` | GitHub App slug (e.g., `my-app`). If provided, configures git as the app bot instead of default | :x:      | `''`                  |
-| `ref`      | Git ref (branch, tag, or SHA) to check out. Defaults to `actions/checkout`'s own behavior       | :x:      | `''`                  |
-| `shallow`  | If `true`, performs shallow checkout. If `false`, fetches full history with tags                | :x:      | `'true'`              |
+| Input      | Description                                                                                            | Required | Default               |
+| ---------- | ------------------------------------------------------------------------------------------------------ | -------- | --------------------- |
+| `token`    | GitHub token for authentication                                                                        | :x:      | `${{ github.token }}` |
+| `app-slug` | GitHub App slug (for example, `my-app`). If provided, configures git as the app bot instead of default | :x:      | `''`                  |
+| `ref`      | Git ref (branch, tag, or SHA) to check out. Defaults to `actions/checkout`'s own behavior              | :x:      | `''`                  |
+| `shallow`  | If `true`, performs shallow checkout. If `false`, fetches full history with tags                       | :x:      | `'true'`              |
 
 ## :warning: Prerequisites
 
@@ -103,7 +103,7 @@ jobs:
 When no `app-slug` is given, the action resolves the git committer identity
 from the token you provide:
 
-- **GitHub App tokens** → Commits are attributed to the app's bot account (e.g., `my-app[bot]`)
+- **GitHub App tokens** → Commits are attributed to the app's bot account (for example, `my-app[bot]`)
 - **Personal Access Tokens** → Commits are attributed to the token owner
 - **Default `GITHUB_TOKEN`** → Commits are attributed to `github-actions[bot]`
 

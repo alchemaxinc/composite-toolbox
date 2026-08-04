@@ -81,10 +81,10 @@ jobs:
 
 ## :outbox_tray: Outputs
 
-| Output    | Description                                                          |
-| --------- | -------------------------------------------------------------------- |
-| `version` | The version of the new release (e.g., `1.2.3`), empty if no release  |
-| `tag`     | The git tag of the new release (e.g., `v1.2.3`), empty if no release |
+| Output    | Description                                                                 |
+| --------- | --------------------------------------------------------------------------- |
+| `version` | The version of the new release (for example, `1.2.3`), empty if no release  |
+| `tag`     | The git tag of the new release (for example, `v1.2.3`), empty if no release |
 
 ### Example: Using Outputs
 

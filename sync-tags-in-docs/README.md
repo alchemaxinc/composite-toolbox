@@ -7,7 +7,7 @@ semantic version.
 
 > [!IMPORTANT]
 > The `current-tag` input must be a full semantic version with a `v` prefix,
-> for example `v1.10.2` or `v1.10.2-beta.1`. This action replaces all
+> for example, `v1.10.2` or `v1.10.2-beta.1`. This action replaces all
 > existing tag references with this exact tag, no matter their current
 > format (`@v1`, `@v1.2`, `@v1.2.3`).
 
@@ -39,12 +39,12 @@ jobs:
 
 ## :gear: Inputs
 
-| Input              | Description                                              | Required           | Default |
-| ------------------ | -------------------------------------------------------- | ------------------ | ------- |
-| `current-tag`      | Full semantic version tag to update to (e.g., `v1.10.2`) | :white_check_mark: | -       |
-| `github-repo-path` | GitHub repository path (e.g., `alchemaxinc/update-deps`) | :white_check_mark: | -       |
-| `file-extensions`  | Space-separated list of file extensions to scan          | :x:                | `.md`   |
-| `folder`           | Folder to scan for files                                 | :x:                | `.`     |
+| Input              | Description                                                     | Required           | Default |
+| ------------------ | --------------------------------------------------------------- | ------------------ | ------- |
+| `current-tag`      | Full semantic version tag to update to (for example, `v1.10.2`) | :white_check_mark: | -       |
+| `github-repo-path` | GitHub repository path (for example, `alchemaxinc/update-deps`) | :white_check_mark: | -       |
+| `file-extensions`  | Space-separated list of file extensions to scan                 | :x:                | `.md`   |
+| `folder`           | Folder to scan for files                                        | :x:                | `.`     |
 
 ## :outbox_tray: Outputs
 
