@@ -55,6 +55,7 @@ runs:
         fi
 
     - name: Create and push branch
+      id: create_branch
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
@@ -68,6 +69,14 @@ runs:
           BRANCH_NAME="${BRANCH_PREFIX}-$(date +%Y%m%d)-${RUN_ID}"
         else
           BRANCH_NAME="${BRANCH_PREFIX}-${BRANCH_POSTFIX}"
+        fi
+
+        # Reject characters that are not valid in a git branch name and
+        # would otherwise corrupt the GITHUB_OUTPUT write below (for
+        # example, a newline injecting extra output variables).
+        if [[ ! $BRANCH_NAME =~ ^[A-Za-z0-9._/-]+$ ]]; then
+          echo "::error::Computed branch name '$BRANCH_NAME' contains invalid characters. branch-prefix and branch-postfix must only contain letters, digits, '.', '_', '/', or '-'."
+          exit 1
         fi
 
         echo "::debug::Creating branch: $BRANCH_NAME"
@@ -89,8 +98,7 @@ runs:
         echo "::debug::Pushing branch $BRANCH_NAME to origin"
         git push --force-with-lease origin "$BRANCH_NAME"
 
-        # Set branch name for next step
-        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+        echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
 
     - name: Create Pull Request
       id: create_pr
@@ -100,6 +108,7 @@ runs:
         PR_TITLE: ${{ inputs.pr-title }}
         PR_BODY: ${{ inputs.pr-body }}
         BASE_BRANCH: ${{ inputs.base-branch }}
+        BRANCH_NAME: ${{ steps.create_branch.outputs.branch_name }}
       run: |
         echo "::debug::Creating pull request from $BRANCH_NAME to $BASE_BRANCH"
         PR_URL=$(gh pr create \

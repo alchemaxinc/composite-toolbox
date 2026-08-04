@@ -6,10 +6,11 @@ pull request with the changes.
 > [!IMPORTANT]
 > The branch name combines `branch-prefix` with either a custom
 > `branch-postfix` or a unique timestamp and run ID. The unique default
-> avoids name conflicts. This action needs the GitHub CLI in the runner
-> environment. The action pushes the branch with `--force-with-lease`. If a
-> branch with the same name already has commits from another source, the
-> push fails instead of overwriting them.
+> avoids name conflicts. `branch-prefix` and `branch-postfix` can only
+> contain letters, digits, `.`, `_`, `/`, or `-`. This action needs the
+> GitHub CLI in the runner environment. The action pushes the branch with
+> `--force-with-lease`. If a branch with the same name already has commits
+> from another source, the push fails instead of overwriting them.
 
 ## :rocket: Usage
 
