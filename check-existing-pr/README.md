@@ -1,9 +1,9 @@
 # Check for Existing Pull Request :mag:
 
-This GitHub Action checks whether an open pull request with an exact title
-already exists on a target base branch.
+This action checks whether an open pull request with an exact title already
+exists on a target base branch.
 
-Use it to prevent duplicate automation PRs.
+Use it to stop duplicate automation pull requests.
 
 ## :rocket: Usage
 

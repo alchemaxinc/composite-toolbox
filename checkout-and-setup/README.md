@@ -1,9 +1,11 @@
 # Checkout and Setup :wrench:
 
-This GitHub Action performs common repository checkout and Git configuration tasks in a single step.
+This action performs a repository checkout and a Git configuration step
+together.
 
 > [!IMPORTANT]  
-> This action combines checkout and Git configuration, eliminating the need to set up these common steps separately in your workflows.
+> This action combines checkout and Git configuration in one step. You do not
+> need to set up these steps on your own.
 
 ## :rocket: Usage
 
@@ -93,12 +95,13 @@ jobs:
 
 ## :warning: Prerequisites
 
-- The workflow must have appropriate permissions to access the repository
-- The token must have sufficient permissions for the intended operations
+- The workflow must have permission to access the repository.
+- The token must have enough permission for the operations you run.
 
 ## :bulb: How Git Identity Works
 
-When no `app-slug` is provided, the action automatically resolves the git committer identity from the provided token:
+When no `app-slug` is given, the action resolves the git committer identity
+from the token you provide:
 
 - **GitHub App tokens** → Commits are attributed to the app's bot account (e.g., `my-app[bot]`)
 - **Personal Access Tokens** → Commits are attributed to the token owner
@@ -107,4 +110,5 @@ When no `app-slug` is provided, the action automatically resolves the git commit
 If the token cannot be resolved to an identity (for example, it is invalid
 or expired), the step fails instead of falling back to a default identity.
 
-When `app-slug` is provided, the identity is configured explicitly from the slug.
+When you give `app-slug`, the action sets the identity from the slug
+directly.

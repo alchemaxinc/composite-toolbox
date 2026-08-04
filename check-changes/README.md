@@ -1,6 +1,7 @@
 # Check Changes :mag:
 
-This GitHub Action checks if specified files have changes in the working directory using git diff.
+This action checks the working directory for changes to the files you list.
+It uses `git diff`.
 
 > [!IMPORTANT]  
 > This action only checks for uncommitted changes in the working directory. It does not compare between different
