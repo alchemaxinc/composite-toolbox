@@ -55,9 +55,14 @@ jobs:
 ## :warning: Notes
 
 - Matches patterns like `org/repo/action@v1`, `org/repo/action@v1.2`, and
-  `org/repo/action@v1.2.3`.
+  `org/repo/action@v1.2.3`, including prerelease and build metadata
+  suffixes such as `@v1.2.3-beta.1`.
 - The action updates all matched references to the exact `current-tag`
   value.
 - Files are updated in place. Use this action with a PR-creation step to
   commit the changes.
+- This action uses GNU `sed`. Run it on a Linux runner, for example
+  `ubuntu-latest`.
+- The `folder` input must not contain `..`. It must stay inside the
+  checked-out repository.
 - The action logs a notice if it finds no matching files or patterns.
