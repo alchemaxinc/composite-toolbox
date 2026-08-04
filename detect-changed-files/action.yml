@@ -66,9 +66,10 @@ runs:
         fi
 
         {
-          echo 'changed_files<<CHANGED_FILES_EOF'
+          delimiter="CHANGED_FILES_EOF_$(date +%s%N)_$RANDOM"
+          echo "changed_files<<$delimiter"
           echo "$CHANGED"
-          echo 'CHANGED_FILES_EOF'
+          echo "$delimiter"
         } >>"$GITHUB_OUTPUT"
 
         if [ -n "$CHANGED" ]; then
