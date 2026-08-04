@@ -24,22 +24,42 @@ state="open"
 while [ $# -gt 0 ]; do
   case "$1" in
     --title)
+      if [ $# -lt 2 ]; then
+        echo "::error::find-or-create-issue.sh: --title requires a value" >&2
+        exit 1
+      fi
       title="$2"
       shift 2
       ;;
     --body)
+      if [ $# -lt 2 ]; then
+        echo "::error::find-or-create-issue.sh: --body requires a value" >&2
+        exit 1
+      fi
       body="$2"
       shift 2
       ;;
     --label)
+      if [ $# -lt 2 ]; then
+        echo "::error::find-or-create-issue.sh: --label requires a value" >&2
+        exit 1
+      fi
       label="$2"
       shift 2
       ;;
     --type)
+      if [ $# -lt 2 ]; then
+        echo "::error::find-or-create-issue.sh: --type requires a value" >&2
+        exit 1
+      fi
       type="$2"
       shift 2
       ;;
     --state)
+      if [ $# -lt 2 ]; then
+        echo "::error::find-or-create-issue.sh: --state requires a value" >&2
+        exit 1
+      fi
       state="$2"
       shift 2
       ;;
