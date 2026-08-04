@@ -35,6 +35,8 @@ runs:
       env:
         TAG: ${{ inputs.current-tag }}
       run: |
+        set -euo pipefail
+
         echo "::debug::Validating tag: $TAG"
 
         if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
@@ -53,6 +55,8 @@ runs:
         REPO_PATH: ${{ inputs.github-repo-path }}
         NEW_TAG: ${{ inputs.current-tag }}
       run: |
+        set -euo pipefail
+
         FILES_UPDATED=""
 
         echo "::debug::Scanning folder: $FOLDER"
@@ -64,6 +68,11 @@ runs:
         # the checked-out workspace via the folder input.
         if [[ $FOLDER == *..* ]]; then
           echo "::error::The 'folder' input '$FOLDER' must not contain '..'. Use a path relative to the repository root."
+          exit 1
+        fi
+
+        if [ -z "$EXTENSIONS" ]; then
+          echo "::error::The 'file-extensions' input cannot be empty."
           exit 1
         fi
 
@@ -81,9 +90,12 @@ runs:
         done
         FIND_ARGS+=(")")
 
+        # Let find's own stderr reach the job log instead of silently
+        # discarding it, so a real error (for example, an unreadable
+        # directory) is visible rather than looking like "no files found".
         readarray -t FILES < <(find "$FOLDER" \
           \( -path '*/.git' -o -name 'node_modules' \) -prune -o \
-          "${FIND_ARGS[@]}" -print 2>/dev/null || true)
+          "${FIND_ARGS[@]}" -print)
 
         if [ "${#FILES[@]}" -eq 0 ]; then
           echo "::notice::No files found with extensions: $EXTENSIONS"
@@ -113,8 +125,11 @@ runs:
 
           # Save the original to a private temp file for a before/after
           # comparison, instead of clobbering an adjacent '<file>.orig'.
+          # A trap on RETURN never fires here since this runs at script
+          # top level, not inside a function, so use EXIT and clear it
+          # once this iteration's temp file is removed.
           tmp_orig=$(mktemp)
-          trap 'rm -f "$tmp_orig"' RETURN
+          trap 'rm -f "$tmp_orig"' EXIT
           cp "$file" "$tmp_orig"
 
           # Replace: repo-path/any-subpath@v<anything> -> repo-path/any-subpath@NEW_TAG
@@ -131,7 +146,7 @@ runs:
           fi
 
           rm -f "$tmp_orig"
-          trap - RETURN
+          trap - EXIT
         done
 
         # Trim leading space
