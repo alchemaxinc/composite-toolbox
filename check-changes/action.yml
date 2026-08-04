@@ -19,14 +19,21 @@ runs:
     - name: Check for changes
       id: check_changes
       shell: bash
+      env:
+        FILES: ${{ inputs.files }}
       run: |
-        FILES="${{ inputs.files }}"
-
         echo "::debug::Checking for changes in files: $FILES"
+
+        # Split the input on whitespace into an array so a pathspec such as
+        # '*.go' is passed to git as-is, instead of being glob-expanded by Bash.
+        FILES_ARR=()
+        if [ -n "$FILES" ]; then
+          read -r -a FILES_ARR <<<"$FILES"
+        fi
 
         # Use -- to separate revisions from pathspecs for safety.
         # Capture stderr to show git errors directly
-        DIFF_OUTPUT=$(git diff -- $FILES 2>&1)
+        DIFF_OUTPUT=$(git diff -- "${FILES_ARR[@]}" 2>&1)
         GIT_EXIT_CODE=$?
 
         if [ $GIT_EXIT_CODE -ne 0 ]; then
