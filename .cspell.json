@@ -9,7 +9,15 @@
     "Bbot",
     "elif"
   ],
-  "files": ["*.md", "*/**/*.md", "*.yml", "*/**/*.yml", "*.sh", "*/**/*.sh"],
+  "files": [
+    "*.md",
+    "*/**/*.md",
+    "*.yml",
+    "*/**/*.yml",
+    ".github/**/*.yml",
+    "*.sh",
+    "*/**/*.sh"
+  ],
   "ignoreWords": ["releaserc"],
   "ignorePaths": [],
   "dictionaries": [],
