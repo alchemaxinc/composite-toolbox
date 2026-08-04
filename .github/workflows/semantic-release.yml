@@ -84,7 +84,7 @@ jobs:
         id: latest-tag
         run: |
           git fetch --tags
-          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          latest_tag=$(git describe --tags --match 'v*.*.*' --abbrev=0 2>/dev/null || echo "")
           echo "tag=$latest_tag" >> $GITHUB_OUTPUT
 
       - name: Is tag semantic?
