@@ -26,6 +26,19 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Validate shallow input
+      shell: bash
+      env:
+        SHALLOW: ${{ inputs.shallow }}
+      run: |
+        case "$SHALLOW" in
+          true|false) ;;
+          *)
+            echo "::error::Invalid shallow value '$SHALLOW'. Allowed values: true, false."
+            exit 1
+            ;;
+        esac
+
     - name: Checkout repository (shallow)
       if: ${{ inputs.shallow == 'true' }}
       uses: actions/checkout@v7
