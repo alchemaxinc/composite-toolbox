@@ -27,7 +27,7 @@ inputs:
 
   state:
     required: false
-    default: 'all'
+    default: 'open'
     description: 'Issue state to search within ("open" or "all")'
 
 outputs:
@@ -43,11 +43,16 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.token }}
+        ISSUE_TITLE: ${{ inputs.title }}
+        ISSUE_BODY: ${{ inputs.body }}
+        ISSUE_LABEL: ${{ inputs.label }}
+        ISSUE_TYPE: ${{ inputs.type }}
+        ISSUE_STATE: ${{ inputs.state }}
       run: |
         url="$(bash "$GITHUB_ACTION_PATH/find-or-create-issue.sh" \
-          --title "${{ inputs.title }}" \
-          --body "${{ inputs.body }}" \
-          --label "${{ inputs.label }}" \
-          --type "${{ inputs.type }}" \
-          --state "${{ inputs.state }}")"
+          --title "$ISSUE_TITLE" \
+          --body "$ISSUE_BODY" \
+          --label "$ISSUE_LABEL" \
+          --type "$ISSUE_TYPE" \
+          --state "$ISSUE_STATE")"
         echo "url=$url" >> "$GITHUB_OUTPUT"
