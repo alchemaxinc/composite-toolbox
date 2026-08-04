@@ -118,11 +118,12 @@ runs:
           cp "$file" "$tmp_orig"
 
           # Replace: repo-path/any-subpath@v<anything> -> repo-path/any-subpath@NEW_TAG
-          # This handles @v1, @v1.2, @v1.2.3 etc.
-          sed -i "s|\(${ESCAPED_REPO_PATH}/[^@]*\)@v[0-9][0-9.]*|\1@${NEW_TAG}|g" "$file"
+          # This handles @v1, @v1.2, @v1.2.3, and prerelease/build metadata
+          # suffixes such as @v1.2.3-beta.1 or @v1.2.3+build.5.
+          sed -i "s|\(${ESCAPED_REPO_PATH}/[^@]*\)@v[0-9][0-9A-Za-z.+-]*|\1@${NEW_TAG}|g" "$file"
 
           # Also handle bare repo references without subpath: repo-path@v<anything>
-          sed -i "s|\(${ESCAPED_REPO_PATH}\)@v[0-9][0-9.]*|\1@${NEW_TAG}|g" "$file"
+          sed -i "s|\(${ESCAPED_REPO_PATH}\)@v[0-9][0-9A-Za-z.+-]*|\1@${NEW_TAG}|g" "$file"
 
           if ! cmp -s "$file" "$tmp_orig"; then
             echo "::notice::Updated tags in $file to $NEW_TAG"
