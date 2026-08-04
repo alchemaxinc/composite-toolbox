@@ -80,7 +80,7 @@ runs:
         git add -- "${FILES_ARR[@]}"
 
         if git diff --cached --quiet; then
-          echo "::notice::No changes to commit — pushing branch as-is (e.g. backmerge scenario)"
+          echo "::notice::No changes to commit — pushing branch as-is (for example, a backmerge)"
         else
           echo "::debug::Committing changes with message: '$COMMIT_MESSAGE'"
           git commit -m "$COMMIT_MESSAGE"
