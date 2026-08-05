@@ -30,7 +30,7 @@ jobs:
 
       - name: File or reuse tracking issue
         if: failure() && steps.check.outcome == 'failure'
-        uses: alchemaxinc/composite-toolbox/find-or-create-issue@v1.21.0
+        uses: alchemaxinc/composite-toolbox/find-or-create-issue@v1.22.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           state: open
@@ -89,7 +89,7 @@ jobs:
         item: ${{ fromJson(needs.detect.outputs.items) }}
     steps:
       - name: File or reuse tracking issue
-        uses: alchemaxinc/composite-toolbox/find-or-create-issue@v1.21.0
+        uses: alchemaxinc/composite-toolbox/find-or-create-issue@v1.22.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           title: 'Support for ${{ matrix.item }}'
