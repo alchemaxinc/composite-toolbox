@@ -63,6 +63,7 @@ jobs:
   commit the changes.
 - This action uses GNU `sed`. Run it on a Linux runner, for example
   `ubuntu-latest`.
-- The `folder` input must not contain `..`. It must stay inside the
-  checked-out repository.
+- The `folder` input must be a relative path with no `..` segments, and it
+  must not be absolute or start with `~`. It must stay inside the
+  checked-out repository, and it must already exist as a directory.
 - The action logs a notice if it finds no matching files or patterns.

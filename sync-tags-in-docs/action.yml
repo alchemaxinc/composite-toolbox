@@ -64,10 +64,16 @@ runs:
         echo "::debug::Repository path: $REPO_PATH"
         echo "::debug::New tag: $NEW_TAG"
 
-        # Reject '..' path segments so this action cannot be pointed outside
-        # the checked-out workspace via the folder input.
-        if [[ $FOLDER == *..* ]]; then
-          echo "::error::The 'folder' input '$FOLDER' must not contain '..'. Use a path relative to the repository root."
+        # Reject unsafe paths so this action cannot be pointed outside the
+        # checked-out workspace: absolute paths, home-directory expansions,
+        # and '..' traversal segments.
+        if [[ $FOLDER == /* || $FOLDER == ~* || $FOLDER == *..* ]]; then
+          echo "::error::The 'folder' input '$FOLDER' must be a relative path inside the repository and must not contain '..'."
+          exit 1
+        fi
+
+        if [ ! -d "$FOLDER" ]; then
+          echo "::error::The 'folder' input '$FOLDER' does not exist or is not a directory."
           exit 1
         fi
 
