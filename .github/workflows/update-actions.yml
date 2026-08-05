@@ -4,9 +4,12 @@ on:
   schedule:
     - cron: '0 0 * * 0' # Run every Sunday at midnight
 
+permissions: {}
+
 jobs:
   update-actions:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Create temporary GitHub App Token
         id: app
@@ -15,6 +18,7 @@ jobs:
           client-id: ${{ vars.HOUSEKEEPING_BOT_APP_ID }}
           private-key: ${{ secrets.HOUSEKEEPING_BOT_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
 
       - name: Update GitHub Actions
         uses: alchemaxinc/update-deps/actions@v1
@@ -23,7 +27,7 @@ jobs:
           auto-merge: 'true'
           base-branch: 'main'
           prefixes: 'actions'
-          file-glob: '.github/**/*.yml'
+          file-glob: '.github/**/*.{yml,yaml}'
           branch-prefix: 'update-actions'
           pr-title: 'chore: Update GitHub Actions'
           commit-message: 'chore: update github actions'
@@ -33,10 +37,10 @@ jobs:
         with:
           token: ${{ steps.app.outputs.token }}
           base-branch: 'main'
-          branch-prefix: 'update-actions'
-          pr-title: 'feat: Update `action.yml` files'
-          commit-message: 'feat: update `action.yml` files'
-          file-glob: '[!.]*/action.yml'
-          check-files: '[!.]*/action.yml'
+          branch-prefix: 'update-action-manifests'
+          pr-title: 'fix: update `action.yml` files'
+          commit-message: 'fix: update `action.yml` files'
+          file-glob: '[!.]*/action.{yml,yaml}'
+          check-files: '[!.]*/action.{yml,yaml}'
           prefixes: 'actions,hashicorp'
           auto-merge: 'true'

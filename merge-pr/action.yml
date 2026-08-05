@@ -1,23 +1,49 @@
 name: 'Enable Pull Request Automerge'
+
 description: 'A GitHub action to enable auto-merge on a pull request'
+
 inputs:
   token:
-    description: 'GITHUB_TOKEN or a `repo` scoped Personal Access Token (PAT)'
+    required: false
     default: ${{ github.token }}
+    description: 'GITHUB_TOKEN or a `repo` scoped Personal Access Token (PAT)'
+
   repository:
-    description: 'The target GitHub repository containing the pull request'
+    required: false
     default: ${{ github.repository }}
+    description: 'The target GitHub repository containing the pull request'
+
   pull-request-number:
-    description: 'The number of the target pull request'
     required: true
+    description: 'The number of the target pull request'
+
   merge-method:
-    description: 'The merge method to use (merge, squash, or rebase)'
+    required: false
     default: 'merge'
+    description: 'The merge method to use (merge, squash, or rebase)'
+
 runs:
-  using: composite
+  using: 'composite'
   steps:
     - name: Enable automerge
       shell: bash
-      run: gh pr merge -R "${{ inputs.repository }}" --${{ inputs.merge-method }} --auto "${{ inputs.pull-request-number }}"
       env:
         GH_TOKEN: ${{ inputs.token }}
+        REPOSITORY: ${{ inputs.repository }}
+        MERGE_METHOD: ${{ inputs.merge-method }}
+        PULL_REQUEST_NUMBER: ${{ inputs.pull-request-number }}
+      run: |
+        set -euo pipefail
+
+        # Validate the merge method ourselves instead of trusting callers to
+        # run validate-merge-method first, since this value becomes a raw
+        # `gh` CLI flag below.
+        case "$MERGE_METHOD" in
+          merge | squash | rebase) ;;
+          *)
+            echo "::error::Invalid merge-method '$MERGE_METHOD'. Must be one of: merge, squash, rebase."
+            exit 1
+            ;;
+        esac
+
+        gh pr merge -R "$REPOSITORY" "--$MERGE_METHOD" --auto "$PULL_REQUEST_NUMBER"

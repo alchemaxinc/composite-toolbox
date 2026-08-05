@@ -19,27 +19,39 @@ runs:
     - name: Check for changes
       id: check_changes
       shell: bash
+      env:
+        FILES: ${{ inputs.files }}
       run: |
-        FILES="${{ inputs.files }}"
-
         echo "::debug::Checking for changes in files: $FILES"
 
-        # Use -- to separate revisions from pathspecs for safety.
-        # Capture stderr to show git errors directly
-        DIFF_OUTPUT=$(git diff -- $FILES 2>&1)
-        GIT_EXIT_CODE=$?
-
-        if [ $GIT_EXIT_CODE -ne 0 ]; then
-          echo "::error::git diff failed with exit code $GIT_EXIT_CODE:"
-          echo "$DIFF_OUTPUT" >&2
-          exit $GIT_EXIT_CODE
+        # Split the input on whitespace into an array so a pathspec such as
+        # '*.go' is passed to git as-is, instead of being glob-expanded by Bash.
+        FILES_ARR=()
+        if [ -n "$FILES" ]; then
+          read -r -a FILES_ARR <<<"$FILES"
         fi
 
-        if [ -z "$DIFF_OUTPUT" ]; then
+        # Use `git status --porcelain` instead of `git diff` so staged
+        # changes and new untracked files are detected too, not just
+        # unstaged modifications to already-tracked files.
+        # Use -- to separate revisions from pathspecs for safety.
+        # Check the exit status directly (not negated with `if !`, which
+        # would make `$?` reflect the negation instead of git's own
+        # status).
+        if STATUS_OUTPUT=$(git status --porcelain -- "${FILES_ARR[@]}" 2>&1); then
+          :
+        else
+          GIT_EXIT_CODE=$?
+          echo "::error::git status failed with exit code $GIT_EXIT_CODE:"
+          echo "$STATUS_OUTPUT" >&2
+          exit "$GIT_EXIT_CODE"
+        fi
+
+        if [ -z "$STATUS_OUTPUT" ]; then
           echo "::debug::No changes detected"
-          echo "has_changes=false" >> $GITHUB_OUTPUT
+          echo "has_changes=false" >> "$GITHUB_OUTPUT"
           exit 0
         fi
 
         echo "::debug::Changes detected"
-        echo "has_changes=true" >> $GITHUB_OUTPUT
+        echo "has_changes=true" >> "$GITHUB_OUTPUT"

@@ -1,7 +1,7 @@
 # Validate Merge Method ✅
 
-This GitHub Action validates that a provided merge method is one of the
-supported values: `merge`, `squash`, or `rebase`.
+This action checks that a given merge method is one of the supported
+values: `merge`, `squash`, or `rebase`.
 
 ## :rocket: Usage
 

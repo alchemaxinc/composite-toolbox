@@ -6,11 +6,11 @@ inputs:
   file-extensions:
     required: false
     default: '.md'
-    description: 'Space-separated list of file extensions to scan (e.g., ".md .txt")'
+    description: 'Space-separated list of file extensions to scan (for example, ".md .txt")'
 
   github-repo-path:
     required: true
-    description: 'GitHub repository path (e.g., "alchemaxinc/update-deps")'
+    description: 'GitHub repository path (for example, "alchemaxinc/update-deps")'
 
   folder:
     required: false
@@ -19,7 +19,7 @@ inputs:
 
   current-tag:
     required: true
-    description: 'Current GitHub tag to update to (e.g., "v1.10.2")'
+    description: 'Current GitHub tag to update to (for example, "v1.10.2")'
 
 outputs:
   files_updated:
@@ -32,12 +32,15 @@ runs:
     - name: Validate tag
       id: validate_tag
       shell: bash
+      env:
+        TAG: ${{ inputs.current-tag }}
       run: |
-        TAG="${{ inputs.current-tag }}"
+        set -euo pipefail
+
         echo "::debug::Validating tag: $TAG"
 
-        if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "::error::Tag '$TAG' must be a full semantic version with v prefix (e.g., v1.10.2)"
+        if [[ ! $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+          echo "::error::Tag '$TAG' must be a full semantic version with v prefix (for example, v1.10.2 or v1.10.2-beta.1)"
           exit 1
         fi
 
@@ -46,11 +49,14 @@ runs:
     - name: Find and update tags in documentation
       id: update_tags
       shell: bash
+      env:
+        EXTENSIONS: ${{ inputs.file-extensions }}
+        FOLDER: ${{ inputs.folder }}
+        REPO_PATH: ${{ inputs.github-repo-path }}
+        NEW_TAG: ${{ inputs.current-tag }}
       run: |
-        EXTENSIONS="${{ inputs.file-extensions }}"
-        FOLDER="${{ inputs.folder }}"
-        REPO_PATH="${{ inputs.github-repo-path }}"
-        NEW_TAG="${{ inputs.current-tag }}"
+        set -euo pipefail
+
         FILES_UPDATED=""
 
         echo "::debug::Scanning folder: $FOLDER"
@@ -58,27 +64,56 @@ runs:
         echo "::debug::Repository path: $REPO_PATH"
         echo "::debug::New tag: $NEW_TAG"
 
-        # Build find command for multiple extensions
-        FIND_ARGS=""
+        # Reject unsafe paths so this action cannot be pointed outside the
+        # checked-out workspace: absolute paths, home-directory expansions,
+        # and '..' traversal segments.
+        if [[ $FOLDER == /* || $FOLDER == ~* || $FOLDER == *..* ]]; then
+          echo "::error::The 'folder' input '$FOLDER' must be a relative path inside the repository and must not contain '..'."
+          exit 1
+        fi
+
+        if [ ! -d "$FOLDER" ]; then
+          echo "::error::The 'folder' input '$FOLDER' does not exist or is not a directory."
+          exit 1
+        fi
+
+        if [ -z "$EXTENSIONS" ]; then
+          echo "::error::The 'file-extensions' input cannot be empty."
+          exit 1
+        fi
+
+        # Build the find predicate as an array so extensions never need eval.
+        # Skip common vendored and VCS directories that this action must not scan.
+        FIND_ARGS=(-type f "(")
+        first=true
         for ext in $EXTENSIONS; do
-          if [ -n "$FIND_ARGS" ]; then
-            FIND_ARGS="$FIND_ARGS -o"
+          if [ "$first" = true ]; then
+            first=false
+          else
+            FIND_ARGS+=(-o)
           fi
-          FIND_ARGS="$FIND_ARGS -name \"*$ext\""
+          FIND_ARGS+=(-name "*$ext")
         done
+        FIND_ARGS+=(")")
 
-        FILES=$(eval "find \"$FOLDER\" -type f \\( $FIND_ARGS \\)" 2>/dev/null || true)
+        # Let find's own stderr reach the job log instead of silently
+        # discarding it, so a real error (for example, an unreadable
+        # directory) is visible rather than looking like "no files found".
+        readarray -t FILES < <(find "$FOLDER" \
+          \( -path '*/.git' -o -name 'node_modules' \) -prune -o \
+          "${FIND_ARGS[@]}" -print)
 
-        if [ -z "$FILES" ]; then
+        if [ "${#FILES[@]}" -eq 0 ]; then
           echo "::notice::No files found with extensions: $EXTENSIONS"
-          echo "files_updated=" >> $GITHUB_OUTPUT
+          echo "files_updated=" >> "$GITHUB_OUTPUT"
           exit 0
         fi
 
-        # Escape slashes in repo path for use in sed
-        ESCAPED_REPO_PATH=$(echo "$REPO_PATH" | sed 's|/|\\/|g')
+        # Escape regex metacharacters in the repo path so it can be used
+        # safely as a literal inside grep/sed patterns.
+        ESCAPED_REPO_PATH=$(printf '%s' "$REPO_PATH" | sed -e 's/[.[\*^$]/\\&/g' -e 's|/|\\/|g')
 
-        for file in $FILES; do
+        for file in "${FILES[@]}"; do
           if [ ! -f "$file" ]; then
             continue
           fi
@@ -87,33 +122,41 @@ runs:
 
           # Match any reference like: alchemaxinc/update-deps/something@vX or @vX.Y or @vX.Y.Z
           # and replace the tag portion with the new full tag
-          if ! grep -q "${REPO_PATH}[^@]*@v[0-9]" "$file"; then
+          if ! grep -q "${ESCAPED_REPO_PATH}[^@]*@v[0-9]" "$file"; then
             echo "::debug::No matching references in $file"
             continue
           fi
 
           echo "::debug::Found references in $file, updating..."
 
-          # Save original for comparison
-          cp "$file" "$file.orig"
+          # Save the original to a private temp file for a before/after
+          # comparison, instead of clobbering an adjacent '<file>.orig'.
+          # A trap on RETURN never fires here since this runs at script
+          # top level, not inside a function, so use EXIT and clear it
+          # once this iteration's temp file is removed.
+          tmp_orig=$(mktemp)
+          trap 'rm -f "$tmp_orig"' EXIT
+          cp "$file" "$tmp_orig"
 
           # Replace: repo-path/any-subpath@v<anything> -> repo-path/any-subpath@NEW_TAG
-          # This handles @v1, @v1.2, @v1.2.3 etc.
-          sed -i "s|\(${REPO_PATH}/[^@]*\)@v[0-9][0-9.]*|\1@${NEW_TAG}|g" "$file"
+          # This handles @v1, @v1.2, @v1.2.3, and prerelease/build metadata
+          # suffixes such as @v1.2.3-beta.1 or @v1.2.3+build.5.
+          sed -i "s|\(${ESCAPED_REPO_PATH}/[^@]*\)@v[0-9][0-9A-Za-z.+-]*|\1@${NEW_TAG}|g" "$file"
 
           # Also handle bare repo references without subpath: repo-path@v<anything>
-          sed -i "s|\(${REPO_PATH}\)@v[0-9][0-9.]*|\1@${NEW_TAG}|g" "$file"
+          sed -i "s|\(${ESCAPED_REPO_PATH}\)@v[0-9][0-9A-Za-z.+-]*|\1@${NEW_TAG}|g" "$file"
 
-          if ! cmp -s "$file" "$file.orig"; then
+          if ! cmp -s "$file" "$tmp_orig"; then
             echo "::notice::Updated tags in $file to $NEW_TAG"
             FILES_UPDATED="$FILES_UPDATED $file"
           fi
 
-          rm -f "$file.orig"
+          rm -f "$tmp_orig"
+          trap - EXIT
         done
 
         # Trim leading space
-        FILES_UPDATED=$(echo "$FILES_UPDATED" | sed 's/^ //')
+        FILES_UPDATED="${FILES_UPDATED# }"
 
         echo "::notice::Updated files: $FILES_UPDATED"
-        echo "files_updated=$FILES_UPDATED" >> $GITHUB_OUTPUT
+        echo "files_updated=$FILES_UPDATED" >> "$GITHUB_OUTPUT"

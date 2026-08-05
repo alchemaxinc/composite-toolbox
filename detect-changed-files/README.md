@@ -1,12 +1,12 @@
 # Detect Changed Files :mag:
 
-This GitHub Action checks whether files matching the given pathspecs changed
-between a base ref and `HEAD` — for example, across a pull request. Use it to
-gate slow jobs so they only run when relevant files change.
+This action checks whether files matching the given pathspecs changed
+between a base ref and `HEAD`, for example across a pull request. Use it to
+gate slow jobs so they run only when relevant files change.
 
 > [!IMPORTANT]  
-> This action compares against a base commit, so the repository must be checked
-> out with full history (`fetch-depth: 0`) so that the base commit is reachable.
+> This action compares against a base commit. Check out the repository with
+> full history (`fetch-depth: 0`) so the base commit is reachable.
 
 ## :rocket: Usage
 
@@ -22,7 +22,7 @@ jobs:
       has_changes: ${{ steps.detect.outputs.has_changes }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -56,7 +56,7 @@ jobs:
 
 ## :warning: Prerequisites
 
-- The repository must be checked out with full history (`fetch-depth: 0`) so
-  the base commit is reachable
-- Git must be available in the runner environment
-- On events other than `pull_request`, provide the `base` input explicitly
+- Check out the repository with full history (`fetch-depth: 0`) so the base
+  commit is reachable.
+- Git must be available in the runner environment.
+- On events other than `pull_request`, provide the `base` input directly.

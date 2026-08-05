@@ -1,6 +1,6 @@
 name: 'Detect Changed Files'
 
-description: 'Check whether files matching given pathspecs changed between a base ref and HEAD, e.g. across a pull request'
+description: 'Check whether files matching given pathspecs changed between a base ref and HEAD, for example, across a pull request'
 
 inputs:
   files:
@@ -28,15 +28,16 @@ runs:
     - name: Detect changed files
       id: detect
       shell: bash
+      env:
+        FILES: ${{ inputs.files }}
+        BASE: ${{ inputs.base }}
+        PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
       run: |
         set -euo pipefail
 
-        FILES="${{ inputs.files }}"
-        BASE="${{ inputs.base }}"
-
         # Fall back to the pull request base commit when no base is supplied.
         if [ -z "$BASE" ]; then
-          BASE="${{ github.event.pull_request.base.sha }}"
+          BASE="$PR_BASE_SHA"
         fi
 
         if [ -z "$BASE" ]; then
@@ -44,7 +45,7 @@ runs:
           exit 1
         fi
 
-        # The base commit must be present locally; check out with 'fetch-depth: 0'.
+        # The base commit must be present locally. Check out with 'fetch-depth: 0'.
         if ! git rev-parse --verify --quiet "${BASE}^{commit}" >/dev/null; then
           echo "::error::Base ref '$BASE' was not found. Check out with 'fetch-depth: 0' or pass a fetched 'base'."
           exit 1
@@ -53,7 +54,7 @@ runs:
         echo "::debug::Comparing ${BASE}...HEAD for pathspecs: ${FILES:-<all>}"
 
         # Split the input on whitespace into an array of pathspecs and pass them quoted so
-        # Bash won't expand globs (e.g. '*.go') before git evaluates the pathspec.
+        # Bash does not expand globs (for example, '*.go') before git evaluates the pathspec.
         FILES_ARR=()
         if [ -n "$FILES" ]; then
           read -r -a FILES_ARR <<<"$FILES"
@@ -66,9 +67,10 @@ runs:
         fi
 
         {
-          echo 'changed_files<<CHANGED_FILES_EOF'
+          delimiter="CHANGED_FILES_EOF_$(date +%s%N)_$RANDOM"
+          echo "changed_files<<$delimiter"
           echo "$CHANGED"
-          echo 'CHANGED_FILES_EOF'
+          echo "$delimiter"
         } >>"$GITHUB_OUTPUT"
 
         if [ -n "$CHANGED" ]; then

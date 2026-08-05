@@ -1,13 +1,13 @@
 # Semantic Release :package:
 
-This GitHub Action runs semantic-release with caching support for npm dependencies and optional backmerge functionality
-to keep your develop branch in sync with releases.
+This action runs semantic-release. It caches npm dependencies. It can also
+backmerge releases to keep your develop branch in sync with main.
 
 > [!IMPORTANT]
-> This action requires a `.releaserc.json` (or other semantic-release configuration file) in your repository root. It
-> automatically handles checkout, caching of semantic-release dependencies, and can optionally backmerge releases to
-> your
-> develop branch.
+> This action needs a `.releaserc.json` (or other semantic-release
+> configuration file) in your repository root. It handles checkout and
+> caching of semantic-release dependencies. It can also backmerge releases to
+> your develop branch.
 
 ## :rocket: Usage
 
@@ -28,7 +28,6 @@ jobs:
     permissions:
       issues: write
       contents: write
-      id-token: write
       pull-requests: write
 
     steps:
@@ -57,7 +56,6 @@ jobs:
     permissions:
       issues: write
       contents: write
-      id-token: write
       pull-requests: write
 
     steps:
@@ -83,10 +81,10 @@ jobs:
 
 ## :outbox_tray: Outputs
 
-| Output    | Description                                                          |
-| --------- | -------------------------------------------------------------------- |
-| `version` | The version of the new release (e.g., `1.2.3`), empty if no release  |
-| `tag`     | The git tag of the new release (e.g., `v1.2.3`), empty if no release |
+| Output    | Description                                                                 |
+| --------- | --------------------------------------------------------------------------- |
+| `version` | The version of the new release (for example, `1.2.3`), empty if no release  |
+| `tag`     | The git tag of the new release (for example, `v1.2.3`), empty if no release |
 
 ### Example: Using Outputs
 
@@ -115,13 +113,13 @@ The workflow must have the following permissions:
 permissions:
   issues: write # For commenting on issues
   contents: write # For creating releases and pushing tags
-  id-token: write # For OIDC token if needed
   pull-requests: write # For commenting on PRs
 ```
 
 ### Semantic Release Configuration
 
-Your repository must have a semantic-release configuration file (e.g., `.releaserc.json`). Example:
+Your repository must have a semantic-release configuration file, for example
+`.releaserc.json`. Example:
 
 ```json
 {
@@ -136,23 +134,28 @@ Your repository must have a semantic-release configuration file (e.g., `.release
 
 ### Commit Message Convention
 
-This action uses semantic-release which requires commits to follow
-the [Conventional Commits](https://www.conventionalcommits.org/) specification:
+This action uses semantic-release. Your commits must follow the
+[Conventional Commits](https://www.conventionalcommits.org/) specification:
 
-- `feat:` - New features (triggers minor version bump)
-- `fix:` - Bug fixes (triggers patch version bump)
-- `BREAKING CHANGE:` - Breaking changes (triggers major version bump)
-- `chore:`, `docs:`, `style:`, `refactor:`, `test:` - No version bump
+- `feat:` - New features. Triggers a minor version bump.
+- `fix:` - Bug fixes. Triggers a patch version bump.
+- `BREAKING CHANGE:` - Breaking changes. Triggers a major version bump.
+- `chore:`, `docs:`, `style:`, `refactor:`, `test:` - No version bump.
 
 ## :bulb: Features
 
-- **Automatic Caching**: Caches semantic-release and its plugins based on package.json/package-lock.json to speed up
-  subsequent runs
-- **Dynamic Git Identity**: Automatically resolves the git committer identity from the provided token (supports GitHub
-  App tokens, PATs, and the default `GITHUB_TOKEN`)
-- **Full Git History**: Fetches all history and tags needed for semantic-release
-- **Backmerge Support**: Optionally backmerges releases from main to develop (or custom branches)
-- **Flexible Configuration**: Supports custom source and target branch configurations
+- **Automatic Caching**: Caches semantic-release and its plugins based on
+  `package.json`, `package-lock.json`, and any `.releaserc*` file to speed up
+  later runs.
+- **Dynamic Git Identity**: Resolves the git committer identity from the
+  provided token. Supports GitHub App tokens, PATs, and the default
+  `GITHUB_TOKEN`.
+- **Full Git History**: Fetches all history and tags that semantic-release
+  needs.
+- **Backmerge Support**: Can backmerge releases from main to develop, or to
+  custom branches.
+- **Flexible Configuration**: Supports custom source and target branch
+  settings.
 
 ## :books: Related Actions
 

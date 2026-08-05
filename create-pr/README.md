@@ -1,9 +1,16 @@
 # Create Pull Request :arrows_counterclockwise:
 
-This GitHub Action creates a new branch, commits specified files, and opens a pull request with the changes.
+This action creates a new branch, commits the files you list, and opens a
+pull request with the changes.
 
 > [!IMPORTANT]
-> This action creates a branch name by combining the `branch-prefix` with either a custom `branch-postfix` (if provided) or a unique timestamp and run ID (to avoid conflicts). It requires the GitHub CLI to be available in the runner environment.
+> The branch name combines `branch-prefix` with either a custom
+> `branch-postfix` or a unique timestamp and run ID. The unique default
+> avoids name conflicts. `branch-prefix` and `branch-postfix` can only
+> contain letters, digits, `.`, `_`, `/`, or `-`. This action needs the
+> GitHub CLI in the runner environment. The action pushes the branch with
+> `--force-with-lease`. If a branch with the same name already has commits
+> from another source, the push fails instead of overwriting them.
 
 ## :rocket: Usage
 
@@ -19,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
 
       - name: Make changes
         run: |
@@ -75,7 +82,7 @@ jobs:
 
 ## :warning: Prerequisites
 
-- The repository must be checked out before using this action
-- Git must be configured with user credentials
-- The token must have permissions to create branches and pull requests
-- GitHub CLI must be available in the runner environment
+- The repository must be checked out before you use this action.
+- Git must have user credentials set.
+- The token must have permission to create branches and pull requests.
+- The GitHub CLI must be available in the runner environment.

@@ -38,7 +38,7 @@ runs:
           --repo "$GITHUB_REPOSITORY" \
           --state open \
           --base "$BASE_BRANCH" \
-          --limit 200 \
+          --limit 1000 \
           --json title,number \
           --jq '[.[] | select(.title == env.PR_TITLE)] | .[0].number // empty')
 

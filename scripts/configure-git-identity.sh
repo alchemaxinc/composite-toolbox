@@ -19,8 +19,8 @@ elif VIEWER_JSON=$(gh api graphql -f query='{ viewer { login databaseId } }' 2>/
   GIT_USER=$(echo "$VIEWER_JSON" | jq -r '.data.viewer.login')
   GIT_ID=$(echo "$VIEWER_JSON" | jq -r '.data.viewer.databaseId')
 else
-  GIT_USER="github-actions[bot]"
-  GIT_ID="41898282"
+  echo "::error::configure-git-identity.sh: could not resolve an identity for GH_TOKEN. Check that the token is valid and has not expired." >&2
+  exit 1
 fi
 
 git config "$GIT_CONFIG_SCOPE" user.name "$GIT_USER"

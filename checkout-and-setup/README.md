@@ -1,9 +1,11 @@
 # Checkout and Setup :wrench:
 
-This GitHub Action performs common repository checkout and Git configuration tasks in a single step.
+This action performs a repository checkout and a Git configuration step
+together.
 
 > [!IMPORTANT]  
-> This action combines checkout and Git configuration, eliminating the need to set up these common steps separately in your workflows.
+> This action combines checkout and Git configuration in one step. You do not
+> need to set up these steps on your own.
 
 ## :rocket: Usage
 
@@ -84,23 +86,29 @@ jobs:
 
 ## :gear: Inputs
 
-| Input      | Description                                                                                     | Required | Default               |
-| ---------- | ----------------------------------------------------------------------------------------------- | -------- | --------------------- |
-| `token`    | GitHub token for authentication                                                                 | :x:      | `${{ github.token }}` |
-| `app-slug` | GitHub App slug (e.g., `my-app`). If provided, configures git as the app bot instead of default | :x:      | `''`                  |
-| `shallow`  | If `true`, performs shallow checkout. If `false`, fetches full history with tags                | :x:      | `'true'`              |
+| Input      | Description                                                                                            | Required | Default               |
+| ---------- | ------------------------------------------------------------------------------------------------------ | -------- | --------------------- |
+| `token`    | GitHub token for authentication                                                                        | :x:      | `${{ github.token }}` |
+| `app-slug` | GitHub App slug (for example, `my-app`). If provided, configures git as the app bot instead of default | :x:      | `''`                  |
+| `ref`      | Git ref (branch, tag, or SHA) to check out. Defaults to `actions/checkout`'s own behavior              | :x:      | `''`                  |
+| `shallow`  | If `true`, performs shallow checkout. If `false`, fetches full history with tags                       | :x:      | `'true'`              |
 
 ## :warning: Prerequisites
 
-- The workflow must have appropriate permissions to access the repository
-- The token must have sufficient permissions for the intended operations
+- The workflow must have permission to access the repository.
+- The token must have enough permission for the operations you run.
 
 ## :bulb: How Git Identity Works
 
-When no `app-slug` is provided, the action automatically resolves the git committer identity from the provided token:
+When no `app-slug` is given, the action resolves the git committer identity
+from the token you provide:
 
-- **GitHub App tokens** → Commits are attributed to the app's bot account (e.g., `my-app[bot]`)
+- **GitHub App tokens** → Commits are attributed to the app's bot account (for example, `my-app[bot]`)
 - **Personal Access Tokens** → Commits are attributed to the token owner
 - **Default `GITHUB_TOKEN`** → Commits are attributed to `github-actions[bot]`
 
-When `app-slug` is provided, the identity is configured explicitly from the slug.
+If the token cannot be resolved to an identity (for example, it is invalid
+or expired), the step fails instead of falling back to a default identity.
+
+When you give `app-slug`, the action sets the identity from the slug
+directly.
