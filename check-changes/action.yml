@@ -35,10 +35,12 @@ runs:
         # changes and new untracked files are detected too, not just
         # unstaged modifications to already-tracked files.
         # Use -- to separate revisions from pathspecs for safety.
-        # A composite action's `shell: bash` already runs with `-e`, so
-        # check the command's own exit status via `if !` rather than `$?`
-        # after the fact, which never runs once `-e` aborts the step.
-        if ! STATUS_OUTPUT=$(git status --porcelain -- "${FILES_ARR[@]}" 2>&1); then
+        # Check the exit status directly (not negated with `if !`, which
+        # would make `$?` reflect the negation instead of git's own
+        # status).
+        if STATUS_OUTPUT=$(git status --porcelain -- "${FILES_ARR[@]}" 2>&1); then
+          :
+        else
           GIT_EXIT_CODE=$?
           echo "::error::git status failed with exit code $GIT_EXIT_CODE:"
           echo "$STATUS_OUTPUT" >&2
