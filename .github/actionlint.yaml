@@ -1,0 +1,22 @@
+self-hosted-runner:
+  labels: []
+
+config-variables: null
+
+# actionlint bundles a snapshot of popular actions' input schemas that is
+# refreshed only on actionlint releases. Its copy of
+# actions/create-github-app-token@v3 still requires the deprecated app-id
+# input and doesn't know about client-id, even though the action itself
+# (see https://github.com/actions/create-github-app-token/blob/v3/action.yml)
+# already treats client-id as the current input and app-id as deprecated.
+# Ignore these specific stale-schema false positives until actionlint's
+# bundled data catches up.
+paths:
+  .github/workflows/update-actions.yml:
+    ignore:
+      - 'missing input "app-id" which is required by action "actions/create-github-app-token@v3"'
+      - 'input "client-id" is not defined in action "actions/create-github-app-token@v3"'
+  .github/workflows/update-tags-in-docs.yml:
+    ignore:
+      - 'missing input "app-id" which is required by action "actions/create-github-app-token@v3"'
+      - 'input "client-id" is not defined in action "actions/create-github-app-token@v3"'
