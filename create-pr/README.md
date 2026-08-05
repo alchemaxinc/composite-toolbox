@@ -34,7 +34,7 @@ jobs:
           npm update
 
       - name: Create Pull Request
-        uses: alchemaxinc/composite-toolbox/create-pr@v1.21.0
+        uses: alchemaxinc/composite-toolbox/create-pr@v1.22.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base-branch: 'main'
@@ -52,7 +52,7 @@ jobs:
 
 ```yaml
 - name: Create Pull Request with Custom Branch
-  uses: alchemaxinc/composite-toolbox/create-pr@v1.21.0
+  uses: alchemaxinc/composite-toolbox/create-pr@v1.22.0
   with:
     token: ${{ secrets.GITHUB_TOKEN }}
     base-branch: 'main'

@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout and setup
-        uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1.21.0
+        uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1.22.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout and setup as app bot
-        uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1.21.0
+        uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1.22.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           app-slug: my-github-app
@@ -72,7 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout with full history
-        uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1.21.0
+        uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1.22.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           shallow: false
