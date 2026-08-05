@@ -77,7 +77,7 @@ jobs:
             fi
           fi
 
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Sync tags in documentation
         id: sync-tags
