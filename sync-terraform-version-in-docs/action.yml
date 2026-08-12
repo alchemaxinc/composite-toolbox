@@ -1,0 +1,231 @@
+name: 'Sync Terraform Version in Docs'
+
+description: >-
+  Check or update a Terraform provider version constraint (for example,
+  "~> 2") across a set of files that each declare it in a
+  `required_providers`-style block.
+
+inputs:
+  mode:
+    required: true
+    description: >-
+      Either "check" (fail if the files disagree on the constraint, or use
+      anything other than a plain "~> N" pin) or "set" (rewrite the
+      constraint in every file to the major version of "version").
+
+  provider-source:
+    required: true
+    description: 'Provider source address to match, for example "alchemaxinc/balena"'
+
+  files:
+    required: true
+    description: >-
+      Space-separated list of files. Each must contain exactly one
+      `source = "<provider-source>"` line immediately followed by a
+      `version = "..."` line.
+
+  version:
+    required: false
+    default: ''
+    description: 'Full semantic version to pin to, for example "2.0.0". Required when mode is "set".'
+
+outputs:
+  files_updated:
+    description: 'Space-separated list of files that were updated. Only set in "set" mode.'
+    value: ${{ steps.update.outputs.files_updated }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate inputs
+      id: validate
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        PROVIDER_SOURCE: ${{ inputs.provider-source }}
+        FILES: ${{ inputs.files }}
+        VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+
+        case "$MODE" in
+          check | set) ;;
+          *)
+            echo "::error::'mode' must be 'check' or 'set', got '$MODE'."
+            exit 1
+            ;;
+        esac
+
+        if [ -z "$PROVIDER_SOURCE" ]; then
+          echo "::error::'provider-source' input cannot be empty."
+          exit 1
+        fi
+
+        if [ -z "$FILES" ]; then
+          echo "::error::'files' input cannot be empty."
+          exit 1
+        fi
+
+        # Reject paths that can escape the repository: absolute, '~', or '..'.
+        # shellcheck disable=SC2153 # FILES (plural, the input) is intentionally distinct from FILE (the loop variable).
+        read -r -a FILES_ARR <<<"$FILES"
+        for FILE in "${FILES_ARR[@]}"; do
+          if [[ $FILE == /* || $FILE == ~* || $FILE == *..* ]]; then
+            echo "::error::File path '$FILE' must be a relative path inside the repository and must not contain '..'."
+            exit 1
+          fi
+        done
+
+        NEW_CONSTRAINT=""
+        if [ "$MODE" = "set" ]; then
+          if [ -z "$VERSION" ]; then
+            echo "::error::'version' input is required when mode is 'set'."
+            exit 1
+          fi
+
+          # Accept a bare or "v"-prefixed semantic version, with an
+          # optional prerelease or build suffix.
+          if [[ ! $VERSION =~ ^v?([0-9]+)\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::'$VERSION' is not a semantic version (expected X.Y.Z)."
+            exit 1
+          fi
+
+          NEW_CONSTRAINT="~> ${BASH_REMATCH[1]}"
+        fi
+
+        echo "new-constraint=$NEW_CONSTRAINT" >> "$GITHUB_OUTPUT"
+
+    - name: Extract current version constraints
+      id: extract
+      shell: bash
+      env:
+        PROVIDER_SOURCE: ${{ inputs.provider-source }}
+        FILES: ${{ inputs.files }}
+      run: |
+        set -euo pipefail
+
+        # Split FILES on whitespace into an array so Bash treats each
+        # path as its own argument and does not glob-expand it.
+        # shellcheck disable=SC2153 # FILES (plural, the input) is intentionally distinct from FILE (the loop variable).
+        read -r -a FILES_ARR <<<"$FILES"
+
+        if [ "${#FILES_ARR[@]}" -eq 0 ]; then
+          echo "::error::'files' input contains no file paths."
+          exit 1
+        fi
+
+        CONSTRAINTS=""
+
+        for FILE in "${FILES_ARR[@]}"; do
+          if [ ! -f "$FILE" ]; then
+            echo "::error::File '$FILE' does not exist."
+            exit 1
+          fi
+
+          # Curly-brace regex delimiters avoid a clash with the "/" in a
+          # provider source such as "alchemaxinc/balena".
+          MATCH_COUNT=$(PROVIDER_SOURCE="$PROVIDER_SOURCE" perl -0777 -ne '
+            my $source = quotemeta($ENV{PROVIDER_SOURCE});
+            my @matches = m{source\s*=\s*"$source"\s*\n\s*version\s*=\s*"[^"]*"}g;
+            print scalar(@matches);
+          ' "$FILE")
+
+          if [ "$MATCH_COUNT" != "1" ]; then
+            echo "::error::$FILE: expected exactly one '$PROVIDER_SOURCE' provider block with a version constraint, found $MATCH_COUNT."
+            exit 1
+          fi
+
+          CURRENT_CONSTRAINT=$(PROVIDER_SOURCE="$PROVIDER_SOURCE" perl -0777 -ne '
+            my $source = quotemeta($ENV{PROVIDER_SOURCE});
+            if (m{source\s*=\s*"$source"\s*\n\s*version\s*=\s*"([^"]*)"}) {
+              print $1;
+            }
+          ' "$FILE")
+
+          if [[ ! $CURRENT_CONSTRAINT =~ ^~\>\ *[0-9]+$ ]]; then
+            echo "::error::$FILE: version constraint '$CURRENT_CONSTRAINT' is not a plain '~> N' major-version pin."
+            exit 1
+          fi
+
+          echo "::debug::$FILE: current constraint is '$CURRENT_CONSTRAINT'."
+          CONSTRAINTS="$CONSTRAINTS$FILE"$'\t'"$CURRENT_CONSTRAINT"$'\n'
+        done
+
+        # Multiline output: one "file<TAB>constraint" pair per line. Read
+        # it back with `while IFS=$'\t' read -r file constraint`.
+        {
+          echo "constraints<<CONSTRAINTS_EOF"
+          printf '%s' "$CONSTRAINTS"
+          echo "CONSTRAINTS_EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Check constraints are in sync
+      id: check
+      if: inputs.mode == 'check'
+      shell: bash
+      env:
+        CONSTRAINTS: ${{ steps.extract.outputs.constraints }}
+      run: |
+        set -euo pipefail
+
+        FIRST=true
+        FIRST_CONSTRAINT=""
+        MISMATCH=false
+
+        # shellcheck disable=SC2153 # CONSTRAINTS (the env var) is intentionally distinct from CONSTRAINT (the loop variable).
+        while IFS=$'\t' read -r FILE CONSTRAINT; do
+          [ -z "$FILE" ] && continue
+
+          if [ "$FIRST" = true ]; then
+            FIRST_CONSTRAINT="$CONSTRAINT"
+            FIRST=false
+          elif [ "$CONSTRAINT" != "$FIRST_CONSTRAINT" ]; then
+            MISMATCH=true
+          fi
+        done <<<"$CONSTRAINTS"
+
+        if [ "$MISMATCH" = "true" ]; then
+          echo "::error::Provider version constraints are out of sync:"
+          while IFS=$'\t' read -r FILE CONSTRAINT; do
+            [ -z "$FILE" ] && continue
+            echo "  $FILE: $CONSTRAINT"
+          done <<<"$CONSTRAINTS"
+          exit 1
+        fi
+
+        echo "::notice::Provider version constraints are in sync at '$FIRST_CONSTRAINT'."
+
+    - name: Update files to new version
+      id: update
+      if: inputs.mode == 'set'
+      shell: bash
+      env:
+        PROVIDER_SOURCE: ${{ inputs.provider-source }}
+        CONSTRAINTS: ${{ steps.extract.outputs.constraints }}
+        NEW_CONSTRAINT: ${{ steps.validate.outputs.new-constraint }}
+      run: |
+        set -euo pipefail
+
+        FILES_UPDATED=""
+
+        while IFS=$'\t' read -r FILE CURRENT_CONSTRAINT; do
+          [ -z "$FILE" ] && continue
+
+          if [ "$CURRENT_CONSTRAINT" = "$NEW_CONSTRAINT" ]; then
+            echo "::notice::$FILE: already pinned to '$NEW_CONSTRAINT', no change."
+            continue
+          fi
+
+          PROVIDER_SOURCE="$PROVIDER_SOURCE" NEW_CONSTRAINT="$NEW_CONSTRAINT" perl -0777 -pi -e '
+            my $source = quotemeta($ENV{PROVIDER_SOURCE});
+            my $new = $ENV{NEW_CONSTRAINT};
+            s{(source\s*=\s*"$source"\s*\n\s*version\s*=\s*")[^"]*(")}{$1$new$2};
+          ' "$FILE"
+
+          echo "::notice::$FILE: updated '$CURRENT_CONSTRAINT' -> '$NEW_CONSTRAINT'."
+          FILES_UPDATED="$FILES_UPDATED $FILE"
+        done <<<"$CONSTRAINTS"
+
+        # Trim leading space
+        FILES_UPDATED="${FILES_UPDATED# }"
+        echo "files_updated=$FILES_UPDATED" >> "$GITHUB_OUTPUT"

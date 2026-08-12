@@ -82,7 +82,7 @@ jobs:
       - name: Sync tags in documentation
         id: sync-tags
         if: steps.get-tag.outputs.tag != ''
-        uses: ./sync-tags-in-docs
+        uses: ./sync-action-tag-in-docs
         with:
           file-extensions: '.md'
           github-repo-path: 'alchemaxinc/composite-toolbox'
