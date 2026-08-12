@@ -66,6 +66,18 @@ runs:
           exit 1
         fi
 
+        # Reject unsafe paths so this action cannot read/write outside the
+        # checked-out repository: absolute paths, home-directory
+        # expansions, and '..' traversal segments.
+        # shellcheck disable=SC2153 # FILES (plural, the input) is intentionally distinct from FILE (the loop variable).
+        read -r -a FILES_ARR <<<"$FILES"
+        for FILE in "${FILES_ARR[@]}"; do
+          if [[ $FILE == /* || $FILE == ~* || $FILE == *..* ]]; then
+            echo "::error::File path '$FILE' must be a relative path inside the repository and must not contain '..'."
+            exit 1
+          fi
+        done
+
         NEW_CONSTRAINT=""
         if [ "$MODE" = "set" ]; then
           if [ -z "$VERSION" ]; then
