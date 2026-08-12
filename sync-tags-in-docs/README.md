@@ -6,7 +6,7 @@
 > identical implementation under a name that fits this toolbox's
 > "sync-\*-in-docs" naming scheme. It will be removed in a future major
 > version. Update your workflow to use
-> `alchemaxinc/composite-toolbox/sync-action-tag-in-docs@v1` directly.
+> `alchemaxinc/composite-toolbox/sync-action-tag-in-docs@v1.23.0` directly.
 
 See [`sync-action-tag-in-docs`](../sync-action-tag-in-docs/) for usage,
 inputs, and outputs — they are identical.
