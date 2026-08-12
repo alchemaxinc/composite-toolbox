@@ -46,9 +46,7 @@ runs:
           exit 1
         fi
 
-        # Reject unsafe paths so this action cannot be pointed outside the
-        # checked-out workspace: absolute paths, home-directory expansions,
-        # and '..' traversal segments.
+        # Reject paths that can escape the workspace: absolute, '~', or '..'.
         if [[ $FOLDER == /* || $FOLDER == ~* || $FOLDER == *..* ]]; then
           echo "::error::The 'folder' input '$FOLDER' must be a relative path inside the repository and must not contain '..'."
           exit 1
@@ -75,8 +73,8 @@ runs:
       run: |
         set -euo pipefail
 
-        # Build the find predicate as an array so extensions never need eval.
-        # Skip common vendored and VCS directories that this action must not scan.
+        # Build the find predicate as an array to avoid eval.
+        # Skip vendored and VCS directories.
         FIND_ARGS=(-type f "(")
         first=true
         for ext in $EXTENSIONS; do
@@ -89,9 +87,8 @@ runs:
         done
         FIND_ARGS+=(")")
 
-        # Let find's own stderr reach the job log instead of silently
-        # discarding it, so a real error (for example, an unreadable
-        # directory) is visible rather than looking like "no files found".
+        # Do not discard find's stderr. A real error (for example, an
+        # unreadable directory) must not look like "no files found".
         readarray -t FILES < <(find "$FOLDER" \
           \( -path '*/.git' -o -name 'node_modules' \) -prune -o \
           "${FIND_ARGS[@]}" -print)
@@ -118,8 +115,8 @@ runs:
 
         FILES_UPDATED=""
 
-        # Escape regex metacharacters in the repo path so it can be used
-        # safely as a literal inside grep/sed patterns.
+        # Escape regex metacharacters so the repo path is a literal
+        # in grep and sed.
         ESCAPED_REPO_PATH=$(printf '%s' "$REPO_PATH" | sed -e 's/[.[\*^$]/\\&/g' -e 's|/|\\/|g')
 
         # shellcheck disable=SC2153 # FILES (the env var) is intentionally distinct from file (the loop variable).
@@ -131,8 +128,7 @@ runs:
 
           echo "::debug::Processing file: $file"
 
-          # Match any reference like: alchemaxinc/update-deps/something@vX or @vX.Y or @vX.Y.Z
-          # and replace the tag portion with the new full tag
+          # Match a reference like owner/repo/path@vX and replace the tag.
           if ! grep -q "${ESCAPED_REPO_PATH}[^@]*@v[0-9]" "$file"; then
             echo "::debug::No matching references in $file"
             continue
@@ -140,21 +136,19 @@ runs:
 
           echo "::debug::Found references in $file, updating..."
 
-          # Save the original to a private temp file for a before/after
-          # comparison, instead of clobbering an adjacent '<file>.orig'.
-          # A trap on RETURN never fires here since this runs at script
-          # top level, not inside a function, so use EXIT and clear it
-          # once this iteration's temp file is removed.
+          # Copy the file to a temp file for a before/after comparison.
+          # A trap on RETURN does not work at the top level of a script,
+          # so use EXIT and clear it after each file.
           tmp_orig=$(mktemp)
           trap 'rm -f "$tmp_orig"' EXIT
           cp "$file" "$tmp_orig"
 
-          # Replace: repo-path/any-subpath@v<anything> -> repo-path/any-subpath@NEW_TAG
-          # This handles @v1, @v1.2, @v1.2.3, and prerelease/build metadata
+          # Replace repo-path/subpath@vX with repo-path/subpath@NEW_TAG.
+          # This matches @v1, @v1.2, @v1.2.3, and prerelease or build
           # suffixes such as @v1.2.3-beta.1 or @v1.2.3+build.5.
           sed -i "s|\(${ESCAPED_REPO_PATH}/[^@]*\)@v[0-9][0-9A-Za-z.+-]*|\1@${NEW_TAG}|g" "$file"
 
-          # Also handle bare repo references without subpath: repo-path@v<anything>
+          # Also match a bare repo reference with no subpath: repo-path@vX.
           sed -i "s|\(${ESCAPED_REPO_PATH}\)@v[0-9][0-9A-Za-z.+-]*|\1@${NEW_TAG}|g" "$file"
 
           if ! cmp -s "$file" "$tmp_orig"; then

@@ -66,9 +66,7 @@ runs:
           exit 1
         fi
 
-        # Reject unsafe paths so this action cannot read/write outside the
-        # checked-out repository: absolute paths, home-directory
-        # expansions, and '..' traversal segments.
+        # Reject paths that can escape the repository: absolute, '~', or '..'.
         # shellcheck disable=SC2153 # FILES (plural, the input) is intentionally distinct from FILE (the loop variable).
         read -r -a FILES_ARR <<<"$FILES"
         for FILE in "${FILES_ARR[@]}"; do
@@ -85,8 +83,8 @@ runs:
             exit 1
           fi
 
-          # Accept a bare or "v"-prefixed semantic version, with optional
-          # prerelease/build metadata suffixes.
+          # Accept a bare or "v"-prefixed semantic version, with an
+          # optional prerelease or build suffix.
           if [[ ! $VERSION =~ ^v?([0-9]+)\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
             echo "::error::'$VERSION' is not a semantic version (expected X.Y.Z)."
             exit 1
@@ -106,8 +104,8 @@ runs:
       run: |
         set -euo pipefail
 
-        # Split on whitespace into an array so each path is handled as its
-        # own argument, instead of being glob-expanded by Bash.
+        # Split FILES on whitespace into an array so Bash treats each
+        # path as its own argument and does not glob-expand it.
         # shellcheck disable=SC2153 # FILES (plural, the input) is intentionally distinct from FILE (the loop variable).
         read -r -a FILES_ARR <<<"$FILES"
 
@@ -124,7 +122,7 @@ runs:
             exit 1
           fi
 
-          # Curly-brace regex delimiters avoid clashing with the "/" in a
+          # Curly-brace regex delimiters avoid a clash with the "/" in a
           # provider source such as "alchemaxinc/balena".
           MATCH_COUNT=$(PROVIDER_SOURCE="$PROVIDER_SOURCE" perl -0777 -ne '
             my $source = quotemeta($ENV{PROVIDER_SOURCE});
@@ -153,8 +151,8 @@ runs:
           CONSTRAINTS="$CONSTRAINTS$FILE"$'\t'"$CURRENT_CONSTRAINT"$'\n'
         done
 
-        # Multiline output: one "file<TAB>constraint" pair per line, read
-        # back with `while IFS=$'\t' read -r file constraint` in later steps.
+        # Multiline output: one "file<TAB>constraint" pair per line. Read
+        # it back with `while IFS=$'\t' read -r file constraint`.
         {
           echo "constraints<<CONSTRAINTS_EOF"
           printf '%s' "$CONSTRAINTS"
