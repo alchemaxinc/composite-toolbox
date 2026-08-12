@@ -1,4 +1,4 @@
-name: 'Sync Terraform Provider Version'
+name: 'Sync Terraform Version in Docs'
 
 description: >-
   Check or update a Terraform provider version constraint (for example,
@@ -32,13 +32,13 @@ inputs:
 outputs:
   files_updated:
     description: 'Space-separated list of files that were updated. Only set in "set" mode.'
-    value: ${{ steps.run.outputs.files_updated }}
+    value: ${{ steps.update.outputs.files_updated }}
 
 runs:
   using: 'composite'
   steps:
-    - name: Sync Terraform provider version
-      id: run
+    - name: Validate inputs
+      id: validate
       shell: bash
       env:
         MODE: ${{ inputs.mode }}
@@ -66,10 +66,6 @@ runs:
           exit 1
         fi
 
-        # Split on whitespace into an array so each path is handled as its
-        # own argument, instead of being glob-expanded by Bash.
-        read -r -a FILES_ARR <<<"$FILES"
-
         NEW_CONSTRAINT=""
         if [ "$MODE" = "set" ]; then
           if [ -z "$VERSION" ]; then
@@ -87,8 +83,23 @@ runs:
           NEW_CONSTRAINT="~> ${BASH_REMATCH[1]}"
         fi
 
-        FILES_UPDATED=""
-        declare -A CONSTRAINTS
+        echo "new-constraint=$NEW_CONSTRAINT" >> "$GITHUB_OUTPUT"
+
+    - name: Extract current version constraints
+      id: extract
+      shell: bash
+      env:
+        PROVIDER_SOURCE: ${{ inputs.provider-source }}
+        FILES: ${{ inputs.files }}
+      run: |
+        set -euo pipefail
+
+        # Split on whitespace into an array so each path is handled as its
+        # own argument, instead of being glob-expanded by Bash.
+        # shellcheck disable=SC2153 # FILES (plural, the input) is intentionally distinct from FILE (the loop variable).
+        read -r -a FILES_ARR <<<"$FILES"
+
+        CONSTRAINTS=""
 
         for FILE in "${FILES_ARR[@]}"; do
           if [ ! -f "$FILE" ]; then
@@ -121,46 +132,84 @@ runs:
             exit 1
           fi
 
-          CONSTRAINTS["$FILE"]="$CURRENT_CONSTRAINT"
-
-          if [ "$MODE" = "set" ]; then
-            if [ "$CURRENT_CONSTRAINT" = "$NEW_CONSTRAINT" ]; then
-              echo "::notice::$FILE: already pinned to '$NEW_CONSTRAINT', no change."
-              continue
-            fi
-
-            PROVIDER_SOURCE="$PROVIDER_SOURCE" NEW_CONSTRAINT="$NEW_CONSTRAINT" perl -0777 -pi -e '
-              my $source = quotemeta($ENV{PROVIDER_SOURCE});
-              my $new = $ENV{NEW_CONSTRAINT};
-              s{(source\s*=\s*"$source"\s*\n\s*version\s*=\s*")[^"]*(")}{$1$new$2};
-            ' "$FILE"
-
-            echo "::notice::$FILE: updated '$CURRENT_CONSTRAINT' -> '$NEW_CONSTRAINT'."
-            FILES_UPDATED="$FILES_UPDATED $FILE"
-          fi
+          echo "::debug::$FILE: current constraint is '$CURRENT_CONSTRAINT'."
+          CONSTRAINTS="$CONSTRAINTS$FILE"$'\t'"$CURRENT_CONSTRAINT"$'\n'
         done
 
-        if [ "$MODE" = "check" ]; then
-          FIRST_FILE="${FILES_ARR[0]}"
-          FIRST_CONSTRAINT="${CONSTRAINTS[$FIRST_FILE]}"
-          MISMATCH=false
+        # Multiline output: one "file<TAB>constraint" pair per line, read
+        # back with `while IFS=$'\t' read -r file constraint` in later steps.
+        {
+          echo "constraints<<CONSTRAINTS_EOF"
+          printf '%s' "$CONSTRAINTS"
+          echo "CONSTRAINTS_EOF"
+        } >> "$GITHUB_OUTPUT"
 
-          for FILE in "${FILES_ARR[@]}"; do
-            if [ "${CONSTRAINTS[$FILE]}" != "$FIRST_CONSTRAINT" ]; then
-              MISMATCH=true
-            fi
-          done
+    - name: Check constraints are in sync
+      id: check
+      if: inputs.mode == 'check'
+      shell: bash
+      env:
+        CONSTRAINTS: ${{ steps.extract.outputs.constraints }}
+      run: |
+        set -euo pipefail
 
-          if [ "$MISMATCH" = "true" ]; then
-            echo "::error::Provider version constraints are out of sync:"
-            for FILE in "${FILES_ARR[@]}"; do
-              echo "  $FILE: ${CONSTRAINTS[$FILE]}"
-            done
-            exit 1
+        FIRST=true
+        FIRST_CONSTRAINT=""
+        MISMATCH=false
+
+        # shellcheck disable=SC2153 # CONSTRAINTS (the env var) is intentionally distinct from CONSTRAINT (the loop variable).
+        while IFS=$'\t' read -r FILE CONSTRAINT; do
+          [ -z "$FILE" ] && continue
+
+          if [ "$FIRST" = true ]; then
+            FIRST_CONSTRAINT="$CONSTRAINT"
+            FIRST=false
+          elif [ "$CONSTRAINT" != "$FIRST_CONSTRAINT" ]; then
+            MISMATCH=true
+          fi
+        done <<<"$CONSTRAINTS"
+
+        if [ "$MISMATCH" = "true" ]; then
+          echo "::error::Provider version constraints are out of sync:"
+          while IFS=$'\t' read -r FILE CONSTRAINT; do
+            [ -z "$FILE" ] && continue
+            echo "  $FILE: $CONSTRAINT"
+          done <<<"$CONSTRAINTS"
+          exit 1
+        fi
+
+        echo "::notice::Provider version constraints are in sync at '$FIRST_CONSTRAINT'."
+
+    - name: Update files to new version
+      id: update
+      if: inputs.mode == 'set'
+      shell: bash
+      env:
+        PROVIDER_SOURCE: ${{ inputs.provider-source }}
+        CONSTRAINTS: ${{ steps.extract.outputs.constraints }}
+        NEW_CONSTRAINT: ${{ steps.validate.outputs.new-constraint }}
+      run: |
+        set -euo pipefail
+
+        FILES_UPDATED=""
+
+        while IFS=$'\t' read -r FILE CURRENT_CONSTRAINT; do
+          [ -z "$FILE" ] && continue
+
+          if [ "$CURRENT_CONSTRAINT" = "$NEW_CONSTRAINT" ]; then
+            echo "::notice::$FILE: already pinned to '$NEW_CONSTRAINT', no change."
+            continue
           fi
 
-          echo "::notice::Provider version constraints are in sync at '$FIRST_CONSTRAINT'."
-        fi
+          PROVIDER_SOURCE="$PROVIDER_SOURCE" NEW_CONSTRAINT="$NEW_CONSTRAINT" perl -0777 -pi -e '
+            my $source = quotemeta($ENV{PROVIDER_SOURCE});
+            my $new = $ENV{NEW_CONSTRAINT};
+            s{(source\s*=\s*"$source"\s*\n\s*version\s*=\s*")[^"]*(")}{$1$new$2};
+          ' "$FILE"
+
+          echo "::notice::$FILE: updated '$CURRENT_CONSTRAINT' -> '$NEW_CONSTRAINT'."
+          FILES_UPDATED="$FILES_UPDATED $FILE"
+        done <<<"$CONSTRAINTS"
 
         # Trim leading space
         FILES_UPDATED="${FILES_UPDATED# }"

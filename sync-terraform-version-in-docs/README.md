@@ -18,7 +18,7 @@ Check that files agree (for example, in a pull request lint job):
 
 ```yaml
 - name: Check provider version constraints are in sync
-  uses: alchemaxinc/composite-toolbox/sync-terraform-provider-version@v1
+  uses: alchemaxinc/composite-toolbox/sync-terraform-version-in-docs@v1
   with:
     mode: 'check'
     provider-source: 'alchemaxinc/balena'
@@ -29,7 +29,7 @@ Update files to a released version (for example, after a release):
 
 ```yaml
 - name: Sync provider version examples
-  uses: alchemaxinc/composite-toolbox/sync-terraform-provider-version@v1
+  uses: alchemaxinc/composite-toolbox/sync-terraform-version-in-docs@v1
   with:
     mode: 'set'
     provider-source: 'alchemaxinc/balena'
