@@ -99,6 +99,11 @@ runs:
         # shellcheck disable=SC2153 # FILES (plural, the input) is intentionally distinct from FILE (the loop variable).
         read -r -a FILES_ARR <<<"$FILES"
 
+        if [ "${#FILES_ARR[@]}" -eq 0 ]; then
+          echo "::error::'files' input contains no file paths."
+          exit 1
+        fi
+
         CONSTRAINTS=""
 
         for FILE in "${FILES_ARR[@]}"; do
