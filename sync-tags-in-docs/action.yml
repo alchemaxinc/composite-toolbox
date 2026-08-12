@@ -4,6 +4,11 @@ description: >-
   Deprecated: use sync-action-tag-in-docs instead. This action will be
   removed in a future major version.
 
+# DEPRECATED: This action is a frozen duplicate of sync-action-tag-in-docs,
+# kept only for backward compatibility with existing external callers (see
+# alchemaxinc/update-deps). Do not add features here; make changes in
+# sync-action-tag-in-docs instead.
+
 inputs:
   file-extensions:
     required: false
@@ -33,7 +38,12 @@ runs:
   steps:
     - name: Warn about deprecated action name
       shell: bash
-      run: echo "::warning::sync-tags-in-docs is deprecated, use sync-action-tag-in-docs instead."
+      run: |
+        echo "::warning title=Deprecated action::sync-tags-in-docs is deprecated, use sync-action-tag-in-docs instead. This action will be removed in a future major version."
+        {
+          echo "### :warning: Deprecated action"
+          echo "\`sync-tags-in-docs\` is deprecated. Use \`sync-action-tag-in-docs\` instead."
+        } >> "$GITHUB_STEP_SUMMARY"
 
     - name: Validate tag
       id: validate_tag

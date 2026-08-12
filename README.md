@@ -22,6 +22,7 @@ Contributions and use by other projects are welcome.
 - **[merge-pr](./merge-pr/)** - Enable auto-merge on a pull request
 - **[semantic-release](./semantic-release/)** - Run semantic-release with caching and optional backmerge support
 - **[sync-action-tag-in-docs](./sync-action-tag-in-docs/)** - Update GitHub action tags in documentation files to match the current version
+- **[sync-tags-in-docs](./sync-tags-in-docs/)** - _Deprecated, use sync-action-tag-in-docs instead_
 - **[sync-terraform-version-in-docs](./sync-terraform-version-in-docs/)** - Check or update a Terraform provider version constraint across documentation files
 - **[validate-merge-method](./validate-merge-method/)** - Validate merge-method input (`merge`, `squash`, `rebase`)
 

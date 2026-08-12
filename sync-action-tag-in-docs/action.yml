@@ -24,16 +24,18 @@ inputs:
 outputs:
   files_updated:
     description: 'Space-separated list of files that were updated'
-    value: ${{ steps.update_tags.outputs.files_updated }}
+    value: ${{ steps.update.outputs.files_updated }}
 
 runs:
   using: 'composite'
   steps:
-    - name: Validate tag
-      id: validate_tag
+    - name: Validate inputs
+      id: validate
       shell: bash
       env:
         TAG: ${{ inputs.current-tag }}
+        FOLDER: ${{ inputs.folder }}
+        EXTENSIONS: ${{ inputs.file-extensions }}
       run: |
         set -euo pipefail
 
@@ -43,26 +45,6 @@ runs:
           echo "::error::Tag '$TAG' must be a full semantic version with v prefix (for example, v1.10.2 or v1.10.2-beta.1)"
           exit 1
         fi
-
-        echo "::debug::Tag validation passed: $TAG"
-
-    - name: Find and update tags in documentation
-      id: update_tags
-      shell: bash
-      env:
-        EXTENSIONS: ${{ inputs.file-extensions }}
-        FOLDER: ${{ inputs.folder }}
-        REPO_PATH: ${{ inputs.github-repo-path }}
-        NEW_TAG: ${{ inputs.current-tag }}
-      run: |
-        set -euo pipefail
-
-        FILES_UPDATED=""
-
-        echo "::debug::Scanning folder: $FOLDER"
-        echo "::debug::File extensions: $EXTENSIONS"
-        echo "::debug::Repository path: $REPO_PATH"
-        echo "::debug::New tag: $NEW_TAG"
 
         # Reject unsafe paths so this action cannot be pointed outside the
         # checked-out workspace: absolute paths, home-directory expansions,
@@ -81,6 +63,17 @@ runs:
           echo "::error::The 'file-extensions' input cannot be empty."
           exit 1
         fi
+
+        echo "::debug::Validation passed: tag=$TAG folder=$FOLDER extensions=$EXTENSIONS"
+
+    - name: Find files to scan
+      id: find
+      shell: bash
+      env:
+        FOLDER: ${{ inputs.folder }}
+        EXTENSIONS: ${{ inputs.file-extensions }}
+      run: |
+        set -euo pipefail
 
         # Build the find predicate as an array so extensions never need eval.
         # Skip common vendored and VCS directories that this action must not scan.
@@ -105,15 +98,33 @@ runs:
 
         if [ "${#FILES[@]}" -eq 0 ]; then
           echo "::notice::No files found with extensions: $EXTENSIONS"
-          echo "files_updated=" >> "$GITHUB_OUTPUT"
-          exit 0
         fi
+
+        {
+          echo "files<<FILES_EOF"
+          printf '%s\n' "${FILES[@]}"
+          echo "FILES_EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Update tags in files
+      id: update
+      shell: bash
+      env:
+        FILES: ${{ steps.find.outputs.files }}
+        REPO_PATH: ${{ inputs.github-repo-path }}
+        NEW_TAG: ${{ inputs.current-tag }}
+      run: |
+        set -euo pipefail
+
+        FILES_UPDATED=""
 
         # Escape regex metacharacters in the repo path so it can be used
         # safely as a literal inside grep/sed patterns.
         ESCAPED_REPO_PATH=$(printf '%s' "$REPO_PATH" | sed -e 's/[.[\*^$]/\\&/g' -e 's|/|\\/|g')
 
-        for file in "${FILES[@]}"; do
+        # shellcheck disable=SC2153 # FILES (the env var) is intentionally distinct from file (the loop variable).
+        while IFS= read -r file; do
+          [ -z "$file" ] && continue
           if [ ! -f "$file" ]; then
             continue
           fi
@@ -153,7 +164,7 @@ runs:
 
           rm -f "$tmp_orig"
           trap - EXIT
-        done
+        done <<<"$FILES"
 
         # Trim leading space
         FILES_UPDATED="${FILES_UPDATED# }"
