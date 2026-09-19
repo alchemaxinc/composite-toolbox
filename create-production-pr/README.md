@@ -3,8 +3,8 @@
 This action opens a pull request that promotes one branch into another, for
 example `develop` into `main`. If the two branches differ, the action opens
 the pull request. It reuses an existing open pull request with the same
-title instead of creating a duplicate. It can also enable auto-merge on the
-result.
+title and head branch instead of creating a duplicate. It can also enable
+auto-merge on the result.
 
 > [!IMPORTANT]  
 > Check out the head branch (for example `develop`) with full history
