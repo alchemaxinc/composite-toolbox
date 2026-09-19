@@ -5,6 +5,11 @@ exists on a target base branch.
 
 Use it to stop duplicate automation pull requests.
 
+> [!IMPORTANT]  
+> If your automation always opens pull requests from the same branch (for
+> example, `develop`), pass `head-branch`. Without it, an unrelated open
+> pull request with the same title can match and get treated as yours.
+
 ## :rocket: Usage
 
 ```yaml
@@ -30,11 +35,12 @@ jobs:
 
 ## :gear: Inputs
 
-| Input         | Description                                 | Required           |
-| ------------- | ------------------------------------------- | ------------------ |
-| `token`       | GitHub token used to query pull requests    | :white_check_mark: |
-| `pr-title`    | Exact pull request title to search for      | :white_check_mark: |
-| `base-branch` | Base branch to search open pull requests on | :white_check_mark: |
+| Input         | Description                                                                                               | Required           | Default |
+| ------------- | --------------------------------------------------------------------------------------------------------- | ------------------ | ------- |
+| `token`       | GitHub token used to query pull requests                                                                  | :white_check_mark: | -       |
+| `pr-title`    | Exact pull request title to search for                                                                    | :white_check_mark: | -       |
+| `base-branch` | Base branch to search open pull requests on                                                               | :white_check_mark: | -       |
+| `head-branch` | Head branch a matching pull request must also have. If empty, only the title and base branch are matched. | :x:                | `''`    |
 
 ## :outbox_tray: Outputs
 

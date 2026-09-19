@@ -18,6 +18,11 @@ inputs:
     required: true
     description: 'Base branch to search open pull requests against'
 
+  head-branch:
+    required: false
+    default: ''
+    description: 'Head branch a matching pull request must also have; if left empty, only the title and base branch are matched'
+
 outputs:
   exists:
     description: 'Whether an open PR with the given title already exists ("true" or "false")'
@@ -37,13 +42,15 @@ runs:
         GH_TOKEN: ${{ inputs.token }}
         PR_TITLE: ${{ inputs.pr-title }}
         BASE_BRANCH: ${{ inputs.base-branch }}
+        HEAD_BRANCH: ${{ inputs.head-branch }}
       run: |
-        existing=$(gh pr list \
-          --repo "$GITHUB_REPOSITORY" \
-          --state open \
-          --base "$BASE_BRANCH" \
-          --limit 1000 \
-          --json title,number \
+        # shellcheck disable=SC2054 # the comma is gh's own --json value syntax, not an array separator
+        ARGS=(--repo "$GITHUB_REPOSITORY" --state open --base "$BASE_BRANCH" --limit 1000 --json title,number)
+        if [ -n "$HEAD_BRANCH" ]; then
+          ARGS+=(--head "$HEAD_BRANCH")
+        fi
+
+        existing=$(gh pr list "${ARGS[@]}" \
           --jq '[.[] | select(.title == env.PR_TITLE)] | .[0].number // empty')
 
         if [ -n "$existing" ]; then
