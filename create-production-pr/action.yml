@@ -1,0 +1,129 @@
+name: 'Create Production PR'
+
+description: >-
+  Open a pull request promoting one branch into another (for example,
+  develop into main) when they differ, reuse an existing open pull request
+  instead of creating a duplicate, and optionally enable auto-merge.
+
+inputs:
+  token:
+    required: true
+    description: 'GitHub token used for git fetch, pull request, and auto-merge operations'
+
+  base-branch:
+    required: false
+    default: 'main'
+    description: 'Branch to open the pull request against'
+
+  head-branch:
+    required: false
+    default: 'develop'
+    description: 'Branch to promote into the base branch; must already be checked out'
+
+  pr-title:
+    required: false
+    default: 'chore: to prod'
+    description: 'Title of the pull request'
+
+  pr-body:
+    required: false
+    default: ''
+    description: 'The Markdown-supported body for the pull request'
+
+  enable-auto-merge:
+    required: false
+    default: 'true'
+    description: 'Whether to enable auto-merge on the pull request (true/false)'
+
+  merge-method:
+    required: false
+    default: 'merge'
+    description: 'Merge method to use for auto-merge (merge, squash, or rebase)'
+
+outputs:
+  has_changes:
+    description: 'Whether the head branch has changes not yet in the base branch (true/false)'
+    value: ${{ steps.diff.outputs.has_changes }}
+
+  pr_number:
+    description: 'Number of the pull request that was created or reused, empty if there were no changes'
+    value: ${{ steps.resolve_pr_number.outputs.pr_number }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate enable-auto-merge input
+      shell: bash
+      env:
+        ENABLE_AUTO_MERGE: ${{ inputs.enable-auto-merge }}
+      run: |
+        case "$ENABLE_AUTO_MERGE" in
+          true | false) ;;
+          *)
+            echo "::error::Invalid enable-auto-merge value '$ENABLE_AUTO_MERGE'. Allowed values: true, false."
+            exit 1
+            ;;
+        esac
+
+    - name: Fetch base branch
+      shell: bash
+      env:
+        BASE_BRANCH: ${{ inputs.base-branch }}
+      run: git fetch origin "$BASE_BRANCH"
+
+    - name: Check for changes between base and head branches
+      id: diff
+      uses: alchemaxinc/composite-toolbox/detect-changed-files@v1
+      with:
+        base: origin/${{ inputs.base-branch }}
+
+    - name: Check for an existing pull request
+      id: existing_pr
+      if: steps.diff.outputs.has_changes == 'true'
+      uses: alchemaxinc/composite-toolbox/check-existing-pr@v1
+      with:
+        token: ${{ inputs.token }}
+        pr-title: ${{ inputs.pr-title }}
+        base-branch: ${{ inputs.base-branch }}
+
+    - name: Create pull request
+      id: create_pr
+      if: steps.diff.outputs.has_changes == 'true' && steps.existing_pr.outputs.exists == 'false'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        PR_TITLE: ${{ inputs.pr-title }}
+        PR_BODY: ${{ inputs.pr-body }}
+        BASE_BRANCH: ${{ inputs.base-branch }}
+        HEAD_BRANCH: ${{ inputs.head-branch }}
+      run: |
+        echo "::debug::Creating pull request from $HEAD_BRANCH to $BASE_BRANCH"
+        PR_URL=$(gh pr create \
+          --title "$PR_TITLE" \
+          --body "$PR_BODY" \
+          --head "$HEAD_BRANCH" \
+          --base "$BASE_BRANCH")
+
+        echo "::debug::Pull request created at: $PR_URL"
+
+        PR_NUMBER=$(gh pr view "$PR_URL" --json number --jq .number)
+        echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+    - name: Resolve pull request number
+      id: resolve_pr_number
+      if: steps.diff.outputs.has_changes == 'true'
+      shell: bash
+      env:
+        EXISTING_PR_NUMBER: ${{ steps.existing_pr.outputs.pr-number }}
+        CREATED_PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}
+      run: echo "pr_number=${EXISTING_PR_NUMBER:-$CREATED_PR_NUMBER}" >> "$GITHUB_OUTPUT"
+
+    - name: Enable auto-merge
+      if: >-
+        steps.diff.outputs.has_changes == 'true' &&
+        inputs.enable-auto-merge == 'true'
+      uses: alchemaxinc/composite-toolbox/merge-pr@v1
+      with:
+        token: ${{ inputs.token }}
+        pull-request-number: ${{ steps.resolve_pr_number.outputs.pr_number }}
+        merge-method: ${{ inputs.merge-method }}

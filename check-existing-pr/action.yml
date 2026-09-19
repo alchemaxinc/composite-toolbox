@@ -23,6 +23,10 @@ outputs:
     description: 'Whether an open PR with the given title already exists ("true" or "false")'
     value: ${{ steps.check_existing_pr.outputs.exists }}
 
+  pr-number:
+    description: 'Number of the matching open pull request, empty if none exists'
+    value: ${{ steps.check_existing_pr.outputs.pr-number }}
+
 runs:
   using: 'composite'
   steps:
@@ -48,3 +52,4 @@ runs:
         else
           echo "exists=false" >> "$GITHUB_OUTPUT"
         fi
+        echo "pr-number=$existing" >> "$GITHUB_OUTPUT"
