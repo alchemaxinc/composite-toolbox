@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate merge method input
-        uses: alchemaxinc/composite-toolbox/validate-merge-method@v1.24.0
+        uses: alchemaxinc/composite-toolbox/validate-merge-method@v1.24.1
         with:
           merge-method: 'squash'
 ```
