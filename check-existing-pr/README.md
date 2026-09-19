@@ -23,7 +23,7 @@ jobs:
     steps:
       - name: Check for existing PR
         id: check-pr
-        uses: alchemaxinc/composite-toolbox/check-existing-pr@v1.24.0
+        uses: alchemaxinc/composite-toolbox/check-existing-pr@v1.24.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           pr-title: 'chore: update dependencies'

@@ -44,7 +44,7 @@ jobs:
           token: ${{ steps.app.outputs.token }}
 
       - name: Create production PR
-        uses: alchemaxinc/composite-toolbox/create-production-pr@v1.24.0
+        uses: alchemaxinc/composite-toolbox/create-production-pr@v1.24.1
         with:
           token: ${{ steps.app.outputs.token }}
           pr-title: 'chore: to prod'
