@@ -85,6 +85,7 @@ runs:
         token: ${{ inputs.token }}
         pr-title: ${{ inputs.pr-title }}
         base-branch: ${{ inputs.base-branch }}
+        head-branch: ${{ inputs.head-branch }}
 
     - name: Create pull request
       id: create_pr
