@@ -38,9 +38,10 @@ jobs:
 
 ## :outbox_tray: Outputs
 
-| Output   | Description                                                     |
-| -------- | --------------------------------------------------------------- |
-| `exists` | Whether a matching open pull request exists (`true` or `false`) |
+| Output      | Description                                                                     |
+| ----------- | ------------------------------------------------------------------------------- |
+| `exists`    | Whether a matching open pull request exists (`true` or `false`)                 |
+| `pr-number` | Number of the matching open pull request. If none exists, this output is empty. |
 
 ## :warning: Prerequisites
 
