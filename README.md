@@ -65,9 +65,9 @@ jobs:
       results: ${{ toJSON(needs) }}
 ```
 
-Example: the weekly production pull request. `prod-pr`, `backmerge`, and
-`update-github-actions` all take the GitHub App client ID as the
-`app-client-id` input and its private key as the `app-private-key` secret.
+Example: the weekly production pull request. `prod-pr` and `backmerge` both
+take the GitHub App client ID as the `app-client-id` input and its private
+key as the `app-private-key` secret.
 
 ```yaml
 name: Automatic Production PR
