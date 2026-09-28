@@ -30,7 +30,7 @@ Contributions and use by other projects are welcome.
 ## 🔁 Reusable Workflows
 
 These workflows are called as jobs with
-`uses: alchemaxinc/composite-toolbox/.github/workflows/<name>.yml@v1`. The
+`uses: alchemaxinc/composite-toolbox/.github/workflows/<name>.yml@v1.25.0`. The
 calling workflow owns the trigger (for example, a `pull_request` event or a
 `schedule`). Secrets are passed by name; the workflows do not use
 `secrets: inherit`. Third-party actions inside them are pinned to commit SHAs.
@@ -55,12 +55,12 @@ jobs:
       - run: make build
 
   lint-pr-title:
-    uses: alchemaxinc/composite-toolbox/.github/workflows/pr-title-lint.yml@v1
+    uses: alchemaxinc/composite-toolbox/.github/workflows/pr-title-lint.yml@v1.25.0
 
   ci-passed:
     if: always()
     needs: [build]
-    uses: alchemaxinc/composite-toolbox/.github/workflows/ci-passed.yml@v1
+    uses: alchemaxinc/composite-toolbox/.github/workflows/ci-passed.yml@v1.25.0
     with:
       results: ${{ toJSON(needs) }}
 ```
@@ -78,7 +78,7 @@ on:
 
 jobs:
   prod-pr:
-    uses: alchemaxinc/composite-toolbox/.github/workflows/prod-pr.yml@v1
+    uses: alchemaxinc/composite-toolbox/.github/workflows/prod-pr.yml@v1.25.0
     with:
       app-client-id: ${{ vars.HOUSEKEEPING_BOT_APP_ID }}
     secrets:
