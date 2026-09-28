@@ -1,0 +1,94 @@
+name: Automatic Production PR
+
+# Opens (or reuses) the pull request that promotes the head branch into the
+# base branch and enables auto-merge on it. The caller owns the trigger, so
+# the weekly schedule lives in the calling workflow.
+
+on:
+  workflow_call:
+    inputs:
+      app-client-id:
+        description: 'Client ID of the GitHub App that opens the pull request'
+        required: true
+        type: string
+      head-branch:
+        description: 'Branch to promote'
+        required: false
+        type: string
+        default: 'develop'
+      base-branch:
+        description: 'Branch to open the pull request against'
+        required: false
+        type: string
+        default: 'main'
+      pr-title:
+        description: 'Title of the pull request'
+        required: false
+        type: string
+        default: 'chore: to prod'
+      pr-body:
+        description: 'Body of the pull request'
+        required: false
+        type: string
+        default: 'Automated weekly production release. Merges all changes from `develop` into `main` to trigger a production deployment.'
+      enable-auto-merge:
+        description: 'Enable auto-merge on the pull request'
+        required: false
+        type: boolean
+        default: true
+      merge-method:
+        description: 'Merge method for auto-merge (merge, squash, or rebase)'
+        required: false
+        type: string
+        default: 'merge'
+    secrets:
+      app-private-key:
+        description: 'Private key of the GitHub App'
+        required: true
+    outputs:
+      has-changes:
+        description: 'Whether the head branch has changes not yet in the base branch (true/false)'
+        value: ${{ jobs.create-prod-pr.outputs.has-changes }}
+      pr-number:
+        description: 'Number of the created or reused pull request, empty when there were no changes'
+        value: ${{ jobs.create-prod-pr.outputs.pr-number }}
+
+permissions: {}
+
+jobs:
+  create-prod-pr:
+    name: Create production PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      has-changes: ${{ steps.prod-pr.outputs.has_changes }}
+      pr-number: ${{ steps.prod-pr.outputs.pr_number }}
+
+    steps:
+      - name: Create temporary GitHub App token
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+
+      - name: Checkout head branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.head-branch }}
+          fetch-depth: 0
+          token: ${{ steps.app.outputs.token }}
+
+      - name: Create production PR
+        id: prod-pr
+        uses: alchemaxinc/composite-toolbox/create-production-pr@v1
+        with:
+          token: ${{ steps.app.outputs.token }}
+          head-branch: ${{ inputs.head-branch }}
+          base-branch: ${{ inputs.base-branch }}
+          pr-title: ${{ inputs.pr-title }}
+          pr-body: ${{ inputs.pr-body }}
+          enable-auto-merge: ${{ inputs.enable-auto-merge && 'true' || 'false' }}
+          merge-method: ${{ inputs.merge-method }}
