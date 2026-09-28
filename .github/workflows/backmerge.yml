@@ -1,0 +1,160 @@
+name: Backmerge
+
+# Merges the source branch into the target branch (for example, main into
+# develop after a release) and pushes the result. When the merge conflicts,
+# it opens a pull request from the source branch into the target branch
+# instead, so the conflict is visible and nothing fails silently.
+
+on:
+  workflow_call:
+    inputs:
+      app-client-id:
+        description: 'Client ID of the GitHub App that pushes the merge'
+        required: true
+        type: string
+      app-slug:
+        description: 'Slug of the GitHub App. When set, the merge commit is attributed to the app bot; when empty, to the identity behind the token.'
+        required: false
+        type: string
+        default: ''
+      source-branch:
+        description: 'Branch to merge from'
+        required: false
+        type: string
+        default: 'main'
+      target-branch:
+        description: 'Branch to merge into'
+        required: false
+        type: string
+        default: 'develop'
+      commit-message:
+        description: 'Message of the merge commit. Defaults to "chore: backmerge <source> into <target>".'
+        required: false
+        type: string
+        default: ''
+      pr-title:
+        description: 'Title of the pull request opened on conflict. Defaults to "chore: backmerge <source> into <target>".'
+        required: false
+        type: string
+        default: ''
+    secrets:
+      app-private-key:
+        description: 'Private key of the GitHub App'
+        required: true
+    outputs:
+      result:
+        description: 'What happened: merged, up-to-date, or conflict (a pull request was opened or already exists)'
+        value: ${{ jobs.backmerge.outputs.result }}
+      pr-number:
+        description: 'Number of the conflict pull request, empty when the merge succeeded'
+        value: ${{ jobs.backmerge.outputs.pr-number }}
+
+permissions: {}
+
+jobs:
+  backmerge:
+    name: Backmerge ${{ inputs.source-branch }} into ${{ inputs.target-branch }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      result: ${{ steps.merge.outputs.result }}
+      pr-number: ${{ steps.existing-pr.outputs.pr-number || steps.create-pr.outputs.pr_number }}
+
+    steps:
+      - name: Create temporary GitHub App token
+        id: app
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+
+      - name: Checkout and configure git identity
+        uses: alchemaxinc/composite-toolbox/checkout-and-setup@v1
+        with:
+          token: ${{ steps.app.outputs.token }}
+          app-slug: ${{ inputs.app-slug }}
+          ref: ${{ inputs.target-branch }}
+          shallow: 'false'
+
+      - name: Resolve messages
+        id: messages
+        env:
+          SOURCE_BRANCH: ${{ inputs.source-branch }}
+          TARGET_BRANCH: ${{ inputs.target-branch }}
+          COMMIT_MESSAGE: ${{ inputs.commit-message }}
+          PR_TITLE: ${{ inputs.pr-title }}
+        run: |
+          DEFAULT="chore: backmerge $SOURCE_BRANCH into $TARGET_BRANCH"
+          echo "commit-message=${COMMIT_MESSAGE:-$DEFAULT}" >> "$GITHUB_OUTPUT"
+          echo "pr-title=${PR_TITLE:-$DEFAULT}" >> "$GITHUB_OUTPUT"
+
+      - name: Merge ${{ inputs.source-branch }} into ${{ inputs.target-branch }}
+        id: merge
+        env:
+          SOURCE_BRANCH: ${{ inputs.source-branch }}
+          TARGET_BRANCH: ${{ inputs.target-branch }}
+          COMMIT_MESSAGE: ${{ steps.messages.outputs.commit-message }}
+        run: |
+          set -euo pipefail
+          git fetch origin "$SOURCE_BRANCH" "$TARGET_BRANCH"
+          # Force the local branch onto the freshly fetched remote ref so a
+          # stale local branch of the same name cannot be merged into.
+          git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
+
+          if git merge-base --is-ancestor "origin/$SOURCE_BRANCH" "origin/$TARGET_BRANCH"; then
+            echo "::notice::$TARGET_BRANCH already contains $SOURCE_BRANCH, nothing to merge"
+            echo "result=up-to-date" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git merge --no-edit -m "$COMMIT_MESSAGE" "origin/$SOURCE_BRANCH"; then
+            git push origin "$TARGET_BRANCH"
+            echo "result=merged" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Merge of $SOURCE_BRANCH into $TARGET_BRANCH conflicts, opening a pull request instead"
+            git merge --abort
+            echo "result=conflict" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for an existing backmerge pull request
+        id: existing-pr
+        if: steps.merge.outputs.result == 'conflict'
+        uses: alchemaxinc/composite-toolbox/check-existing-pr@v1
+        with:
+          token: ${{ steps.app.outputs.token }}
+          pr-title: ${{ steps.messages.outputs.pr-title }}
+          base-branch: ${{ inputs.target-branch }}
+          head-branch: ${{ inputs.source-branch }}
+
+      - name: Open a backmerge pull request
+        id: create-pr
+        if: steps.merge.outputs.result == 'conflict' && steps.existing-pr.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          SOURCE_BRANCH: ${{ inputs.source-branch }}
+          TARGET_BRANCH: ${{ inputs.target-branch }}
+          PR_TITLE: ${{ steps.messages.outputs.pr-title }}
+        run: |
+          set -euo pipefail
+          PR_URL=$(gh pr create \
+            --title "$PR_TITLE" \
+            --body "The automatic backmerge of \`$SOURCE_BRANCH\` into \`$TARGET_BRANCH\` hit merge conflicts. Resolve them and merge this pull request." \
+            --head "$SOURCE_BRANCH" \
+            --base "$TARGET_BRANCH")
+          PR_NUMBER=$(gh pr view "$PR_URL" --json number --jq .number)
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        env:
+          RESULT: ${{ steps.merge.outputs.result }}
+          SOURCE_BRANCH: ${{ inputs.source-branch }}
+          TARGET_BRANCH: ${{ inputs.target-branch }}
+          PR_NUMBER: ${{ steps.existing-pr.outputs.pr-number || steps.create-pr.outputs.pr_number }}
+        run: |
+          case "$RESULT" in
+            merged) echo "Merged \`$SOURCE_BRANCH\` into \`$TARGET_BRANCH\`." ;;
+            up-to-date) echo "\`$TARGET_BRANCH\` already contains \`$SOURCE_BRANCH\`." ;;
+            conflict) echo "Merge conflicts: resolve them in pull request #$PR_NUMBER (\`$SOURCE_BRANCH\` into \`$TARGET_BRANCH\`)." ;;
+          esac >> "$GITHUB_STEP_SUMMARY"
