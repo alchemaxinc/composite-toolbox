@@ -39,7 +39,6 @@ calling workflow owns the trigger (for example, a `pull_request` event or a
 - **[pr-title-lint](./.github/workflows/pr-title-lint.yml)** - Lint the pull request title against Conventional Commits with the shared commitlint config (header up to 150 characters) and a pinned commitlint version.
 - **[prod-pr](./.github/workflows/prod-pr.yml)** - Open or reuse the pull request that promotes `develop` into `main` and enable auto-merge on it, with the [create-production-pr](./create-production-pr/) action.
 - **[backmerge](./.github/workflows/backmerge.yml)** - Merge `main` into `develop` and push. On a merge conflict, open a pull request from `main` into `develop` instead of failing silently.
-- **[update-github-actions](./.github/workflows/update-github-actions.yml)** - Bump the action versions in workflow files, open the bump pull request, and enable auto-merge on it.
 
 Example: a CI gate and a PR title check.
 
