@@ -33,37 +33,15 @@ These workflows are called as jobs with
 `uses: alchemaxinc/composite-toolbox/.github/workflows/<name>.yml@v1.25.0`. The
 calling workflow owns the trigger (for example, a `pull_request` event or a
 `schedule`). Secrets are passed by name; the workflows do not use
-`secrets: inherit`. Third-party actions inside them are pinned to commit SHAs.
+`secrets: inherit`.
 
-- **[ci-passed](./.github/workflows/ci-passed.yml)** - Gate job for branch protection. Pass `toJSON(needs)` as `results`; it fails when a listed job failed or was cancelled and passes when they all succeeded or were skipped.
-- **[pr-title-lint](./.github/workflows/pr-title-lint.yml)** - Lint the pull request title against Conventional Commits with the shared commitlint config (header up to 150 characters) and a pinned commitlint version.
+A called workflow reports its status check as `<calling job> / <called job>`.
+A check that branch protection requires by name must therefore stay in the
+calling repository, which is why the CI gate and the pull request title lint
+are not here.
+
 - **[prod-pr](./.github/workflows/prod-pr.yml)** - Open or reuse the pull request that promotes `develop` into `main` and enable auto-merge on it, with the [create-production-pr](./create-production-pr/) action.
 - **[backmerge](./.github/workflows/backmerge.yml)** - Merge `main` into `develop` and push. On a merge conflict, open a pull request from `main` into `develop` instead of failing silently.
-
-Example: a CI gate and a PR title check.
-
-```yaml
-name: CI
-on:
-  pull_request:
-    types: [opened, edited, reopened, synchronize]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - run: make build
-
-  lint-pr-title:
-    uses: alchemaxinc/composite-toolbox/.github/workflows/pr-title-lint.yml@v1.25.0
-
-  ci-passed:
-    if: always()
-    needs: [build]
-    uses: alchemaxinc/composite-toolbox/.github/workflows/ci-passed.yml@v1.25.0
-    with:
-      results: ${{ toJSON(needs) }}
-```
 
 Example: the weekly production pull request. `prod-pr` and `backmerge` both
 take the GitHub App client ID as the `app-client-id` input and its private
