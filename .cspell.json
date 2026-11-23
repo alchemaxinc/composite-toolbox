@@ -9,7 +9,15 @@
     "esac",
     "Bbot",
     "elif",
-    "pyyaml"
+    "pyyaml",
+    "clippy",
+    "dtolnay",
+    "Swatinem",
+    "taiki",
+    "armv",
+    "musleabihf",
+    "nextest",
+    "rustfmt"
   ],
   "files": [
     "*.md",
