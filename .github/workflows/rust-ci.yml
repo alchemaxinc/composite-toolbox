@@ -64,6 +64,7 @@ permissions:
 
 env:
   MOLD_VERSION: '2.41.0'
+  MOLD_SHA256: 'a3696680d99e692970590a178bc3a33d78d60d1c6dc9db7a11b557b02b751f5d'
   NEXTEST_VERSION: '0.9.133'
   CARGO_TERM_COLOR: always
   # Incremental state is never reused across CI runs; it only bloats the cache.
@@ -176,8 +177,10 @@ jobs:
           set -euo pipefail
           if [ ! -x "$HOME/.local/mold/bin/mold" ]; then
             mkdir -p "$HOME/.local/mold"
-            curl -fsSL "https://github.com/rui314/mold/releases/download/v${MOLD_VERSION}/mold-${MOLD_VERSION}-x86_64-linux.tar.gz" \
-              | tar -xz -C "$HOME/.local/mold" --strip-components=1
+            curl -fsSL -o "$RUNNER_TEMP/mold.tar.gz" \
+              "https://github.com/rui314/mold/releases/download/v${MOLD_VERSION}/mold-${MOLD_VERSION}-x86_64-linux.tar.gz"
+            echo "$MOLD_SHA256  $RUNNER_TEMP/mold.tar.gz" | sha256sum -c -
+            tar -xzf "$RUNNER_TEMP/mold.tar.gz" -C "$HOME/.local/mold" --strip-components=1
           fi
           printf '#!/bin/sh\nexec cc "$@" -fuse-ld=mold\n' > "$HOME/.local/mold/bin/mold-cc"
           chmod +x "$HOME/.local/mold/bin/mold-cc"
