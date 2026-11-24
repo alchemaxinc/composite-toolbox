@@ -2,14 +2,9 @@
 
 ![Composite Toolbox](./docs/logo.png)
 
-This repository is a collection of reusable GitHub Actions. Each action is a
-composite action you can add to your own workflows to handle a common task.
-
-## 🎯 Purpose
-
-This repository is a helper toolbox for
-[alchemaxinc/update-deps](https://github.com/alchemaxinc/update-deps).
-Contributions and use by other projects are welcome.
+A helper toolbox of composite GitHub Actions and reusable workflows that you
+can compose into your own workflows. Contributions and use by other projects
+are welcome.
 
 ## 📦 Available Actions
 
@@ -37,20 +32,18 @@ calling workflow owns the trigger (for example, a `pull_request` event or a
 
 A called workflow reports its status check as `<calling job> / <called job>`.
 A check that branch protection requires by name must therefore be a job in
-the calling workflow. Keep a small
-gate job with that name next to the job that calls the shared workflow, as the
-examples below show.
+the calling workflow. Keep a small gate job with that name next to the job that
+calls the shared workflow, as the examples below show.
 
 Every job in these workflows sets least-privilege `permissions` and a
-`timeout-minutes`. Writes
-go through a GitHub App token, so the caller's `GITHUB_TOKEN` needs no more
+`timeout-minutes`. Writes go through a GitHub App token, so the caller's `GITHUB_TOKEN` needs no more
 than `contents: read`. The calling workflow owns `concurrency`.
 
 - **[prod-pr](./.github/workflows/prod-pr.yml)** - Open or reuse the pull request that promotes `develop` into `main` and enable auto-merge on it, with the [create-production-pr](./create-production-pr/) action.
 - **[backmerge](./.github/workflows/backmerge.yml)** - Merge `main` into `develop` and push. On a merge conflict, open a pull request from `main` into `develop` instead of failing silently.
-- **[pr-title-lint](./.github/workflows/pr-title-lint.yml)** - Lint the pull request title against Conventional Commits with a pinned commitlint and one shared config (merge titles ignored, lines up to 150 characters).
+- **[pr-title-lint](./.github/workflows/pr-title-lint.yml)** - Lint the pull request title against Conventional Commits with a pinned commitlint and one shared config (Git merge titles ignored, lines up to 150 characters).
 - **[rust-ci](./.github/workflows/rust-ci.yml)** - Check a Cargo workspace: rustfmt (on nightly by default, for unstable `.rustfmt.toml` options), clippy with `-D warnings`, the tests with cargo-nextest, and optionally a build or check per cross target, a static-link check and a Prettier check.
-- **[rust-release](./.github/workflows/rust-release.yml)** - Release a Cargo workspace: semantic-release creates a draft, each target builds the binaries and uploads them with a `.sha256` checksum, and the draft is published. A rerun resumes an unpublished draft. Optionally it sends a `repository_dispatch` on a stable release, and it merges `main` back into `develop`.
+- **[rust-release](./.github/workflows/rust-release.yml)** - Release a Cargo workspace: semantic-release creates a draft, each target builds the binaries with a `.sha256` checksum, a separate job uploads them so the App token never meets the build, and the draft is published. A rerun resumes an unpublished draft. Optionally it sends a `repository_dispatch` of a given event type on a stable release, and it merges `main` back into `develop`.
 
 Example: the weekly production pull request. `prod-pr` and `backmerge` both
 take the GitHub App client ID as the `app-client-id` input and its private
