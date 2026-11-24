@@ -4,19 +4,17 @@ name: Rust CI
 # and optionally a build or check for each cross target and a Prettier check.
 #
 # The toolchain comes from `rust-toolchain.toml` in the calling repository.
-# Repository-specific checks (generated code, scripts and so on) stay as extra
-# jobs in the calling workflow.
+# Repository-specific checks stay as extra jobs in the calling workflow.
 #
 # A called job reports its check as `<calling job> / <called job>`. Keep the
-# gate job that branch protection requires (for example, `CI Passed`) in the
-# calling workflow and let it need the job that calls this workflow (see the
-# README).
+# gate job that branch protection requires in the calling workflow and let it
+# need the job that calls this workflow (see the README).
 
 on:
   workflow_call:
     inputs:
       fmt-nightly:
-        description: 'Run rustfmt on nightly. Needed when `.rustfmt.toml` sets unstable options such as `imports_granularity` or `group_imports`, which stable rustfmt ignores.'
+        description: 'Run rustfmt on nightly. Needed when `.rustfmt.toml` sets unstable options, which stable rustfmt ignores.'
         required: false
         type: boolean
         default: true
@@ -103,6 +101,10 @@ jobs:
           fi
           if [[ -n "$STATIC_BINARIES" && "$CROSS_COMMAND" != "build" ]]; then
             echo "::error::static-binaries needs cross-command: build"
+            exit 1
+          fi
+          if [[ -n "${STATIC_BINARIES// }" && -z "${TARGETS//[[:space:],]}" ]]; then
+            echo "::error::static-binaries needs at least one target"
             exit 1
           fi
           if [[ ! "$STATIC_BINARIES" =~ ^[A-Za-z0-9_.\ -]*$ ]]; then
@@ -301,6 +303,10 @@ jobs:
           TARGET: ${{ matrix.target }}
         run: |
           set -euo pipefail
+          if [[ "$TARGET" == *-windows-* ]]; then
+            echo "::notice::Skipping the static-link check for $TARGET"
+            exit 0
+          fi
           for binary in $BINARIES; do
             description=$(file "target/$TARGET/release/$binary")
             echo "$description"

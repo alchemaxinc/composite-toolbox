@@ -14,8 +14,6 @@
     "dtolnay",
     "Swatinem",
     "taiki",
-    "armv",
-    "musleabihf",
     "nextest",
     "rustfmt",
     "tomllib"

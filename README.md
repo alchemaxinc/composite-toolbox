@@ -36,8 +36,8 @@ calling workflow owns the trigger (for example, a `pull_request` event or a
 `secrets: inherit`.
 
 A called workflow reports its status check as `<calling job> / <called job>`.
-A check that branch protection requires by name (for example, `CI Passed` or
-`lint-pr-title`) must therefore be a job in the calling workflow. Keep a small
+A check that branch protection requires by name must therefore be a job in
+the calling workflow. Keep a small
 gate job with that name next to the job that calls the shared workflow, as the
 examples below show.
 
@@ -60,19 +60,19 @@ key as the `app-private-key` secret.
 name: Automatic Production PR
 on:
   schedule:
-    - cron: '30 1 * * 0' # Sunday 01:30 UTC, after the dependency bumps
+    - cron: '0 3 * * 1'
   workflow_dispatch:
 
 jobs:
   prod-pr:
     uses: alchemaxinc/composite-toolbox/.github/workflows/prod-pr.yml@v1.25.0
     with:
-      app-client-id: ${{ vars.HOUSEKEEPING_BOT_APP_ID }}
+      app-client-id: ${{ vars.APP_CLIENT_ID }}
     secrets:
-      app-private-key: ${{ secrets.HOUSEKEEPING_BOT_PRIVATE_KEY }}
+      app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
 ```
 
-Example: the pull request title lint. The `lint-pr-title` gate keeps the
+Example: the pull request title lint. The `pr-title` gate keeps the
 check name that branch protection requires.
 
 ```yaml
@@ -91,8 +91,8 @@ jobs:
   lint:
     uses: alchemaxinc/composite-toolbox/.github/workflows/pr-title-lint.yml@v1.25.0
 
-  lint-pr-title:
-    name: lint-pr-title
+  pr-title:
+    name: pr-title
     if: always()
     needs: [lint]
     runs-on: ubuntu-latest
@@ -104,8 +104,8 @@ jobs:
         run: '[ "$RESULT" = "success" ]'
 ```
 
-Example: Rust CI with a static armv7 build, a repository-specific extra job,
-and the `CI Passed` gate. The gate fails when any job it needs failed or was
+Example: Rust CI with a static musl build, a repository-specific extra job,
+and the `required-checks` gate. The gate fails when any job it needs failed or was
 cancelled.
 
 ```yaml
@@ -126,21 +126,21 @@ jobs:
   rust:
     uses: alchemaxinc/composite-toolbox/.github/workflows/rust-ci.yml@v1.25.0
     with:
-      targets: armv7-unknown-linux-musleabihf
+      targets: x86_64-unknown-linux-musl
       static-binaries: my-binary
       prettier-version: '3.9.9'
 
-  verify-generated-code:
+  extra-check:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - run: make verify-generated-code
+      - run: make check
 
-  ci-passed:
-    name: CI Passed
+  required-checks:
+    name: required-checks
     if: always()
-    needs: [rust, verify-generated-code]
+    needs: [rust, extra-check]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -177,14 +177,15 @@ jobs:
   release:
     uses: alchemaxinc/composite-toolbox/.github/workflows/rust-release.yml@v1.25.0
     with:
-      app-client-id: ${{ vars.HOUSEKEEPING_BOT_APP_ID }}
-      app-slug: alchemax-housekeeper
+      app-client-id: ${{ vars.APP_CLIENT_ID }}
+      app-slug: my-github-app
       binaries: my-binary
-      targets: aarch64-unknown-linux-gnu armv7-unknown-linux-musleabihf
+      targets: aarch64-unknown-linux-gnu x86_64-unknown-linux-musl
       release-tag-env: MY_RELEASE_TAG
-      dispatch-repository: my-deployer # optional
+      dispatch-repository: my-downstream-repo # optional
+      dispatch-event-type: release-published
     secrets:
-      app-private-key: ${{ secrets.HOUSEKEEPING_BOT_PRIVATE_KEY }}
+      app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
 ```
 
 ## 🤝 Contributing
