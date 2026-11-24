@@ -182,6 +182,8 @@ jobs:
       # A rerun after a failed build finds the tag already in place, so
       # semantic-release makes no release and reports no tag. The draft it
       # made the first time is still unpublished; pick it up and finish it.
+      # Only a draft of this branch counts. Its tag is on HEAD, or on the
+      # release commit that a prepare plugin put right on top of HEAD.
       - name: Find an unpublished release of this commit
         id: draft
         if: steps.release.outputs.tag == ''
@@ -189,8 +191,19 @@ jobs:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           set -euo pipefail
-          DRAFTS=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[] | select(.draft) | .tag_name' | sort)
-          TAG=$(comm -12 <(git tag --points-at HEAD | sort) <(echo "$DRAFTS") | sort -V | tail -1)
+          DRAFTS=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '.[] | select(.draft and .target_commitish == env.GITHUB_REF_NAME) | .tag_name')
+          HEAD_SHA=$(git rev-parse HEAD)
+          TAG=$(
+            while IFS= read -r candidate; do
+              [[ -n "$candidate" ]] || continue
+              commit=$(git rev-parse --verify --quiet "refs/tags/$candidate^{commit}") || continue
+              parent=$(git rev-parse --verify --quiet "$commit^" || true)
+              if [[ "$commit" == "$HEAD_SHA" || "$parent" == "$HEAD_SHA" ]]; then
+                echo "$candidate"
+              fi
+            done <<< "$DRAFTS" | sort -V | tail -1
+          )
           if [ -n "$TAG" ]; then
             echo "Resuming the unpublished release $TAG"
             echo "tag=$TAG" >> "$GITHUB_OUTPUT"
