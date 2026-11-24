@@ -56,7 +56,7 @@ jobs:
           cat > "$RUNNER_TEMP/commitlint/commitlint.config.js" <<'CONFIG'
           module.exports = {
             extends: ['@commitlint/config-conventional'],
-            ignores: [(commit) => commit.toLowerCase().startsWith('merge')],
+            ignores: [(commit) => /^merge (branch|pull request|remote-tracking branch|tag) /i.test(commit)],
             rules: {
               'header-max-length': [2, 'always', 150],
               'body-max-line-length': [2, 'always', 150],
