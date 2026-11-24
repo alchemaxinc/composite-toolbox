@@ -167,8 +167,8 @@ jobs:
           path: ~/.local/mold
           key: mold-${{ env.MOLD_VERSION }}-x86_64-linux
 
-      # mold links far faster than ld. RUSTFLAGS is part of the rust-cache
-      # key, so a linker change invalidates the Cargo cache.
+      # mold links faster. A wrapper linker keeps the caller's rustflags, and
+      # its flag goes last to beat the default lld.
       - name: Install the mold linker
         run: |
           set -euo pipefail
@@ -177,9 +177,11 @@ jobs:
             curl -fsSL "https://github.com/rui314/mold/releases/download/v${MOLD_VERSION}/mold-${MOLD_VERSION}-x86_64-linux.tar.gz" \
               | tar -xz -C "$HOME/.local/mold" --strip-components=1
           fi
+          printf '#!/bin/sh\nexec cc "$@" -fuse-ld=mold\n' > "$HOME/.local/mold/bin/mold-cc"
+          chmod +x "$HOME/.local/mold/bin/mold-cc"
           echo "$HOME/.local/mold/bin" >> "$GITHUB_PATH"
           "$HOME/.local/mold/bin/mold" --version
-          echo "RUSTFLAGS=-C link-arg=-fuse-ld=mold" >> "$GITHUB_ENV"
+          echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=$HOME/.local/mold/bin/mold-cc" >> "$GITHUB_ENV"
 
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
