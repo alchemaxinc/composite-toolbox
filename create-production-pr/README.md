@@ -33,8 +33,8 @@ jobs:
         uses: actions/create-github-app-token@v3
         with:
           owner: ${{ github.repository_owner }}
-          client-id: ${{ vars.HOUSEKEEPING_BOT_APP_ID }}
-          private-key: ${{ secrets.HOUSEKEEPING_BOT_PRIVATE_KEY }}
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -48,7 +48,7 @@ jobs:
         with:
           token: ${{ steps.app.outputs.token }}
           pr-title: 'chore: to prod'
-          pr-body: 'Automated weekly production release from `develop` to `main`.'
+          pr-body: 'Promotes `develop` into `main`.'
 ```
 
 ## :gear: Inputs

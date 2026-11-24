@@ -30,7 +30,7 @@ on:
         description: 'Body of the pull request'
         required: false
         type: string
-        default: 'Automated weekly production release. Merges all changes from `develop` into `main` to trigger a production deployment.'
+        default: 'Promotes `develop` into `main`.'
       enable-auto-merge:
         description: 'Enable auto-merge on the pull request'
         required: false

@@ -1,0 +1,352 @@
+name: Rust CI
+
+# Checks a Cargo workspace: rustfmt, clippy with warnings as errors, the tests,
+# and optionally a build or check for each cross target and a Prettier check.
+#
+# The toolchain comes from `rust-toolchain.toml` in the calling repository.
+# Repository-specific checks stay as extra jobs in the calling workflow.
+#
+# A called job reports its check as `<calling job> / <called job>`. Keep the
+# gate job that branch protection requires in the calling workflow and let it
+# need the job that calls this workflow (see the README).
+
+on:
+  workflow_call:
+    inputs:
+      fmt-nightly:
+        description: 'Run rustfmt on nightly. Needed when `.rustfmt.toml` sets unstable options, which stable rustfmt ignores.'
+        required: false
+        type: boolean
+        default: true
+      clippy-args:
+        description: 'Arguments to `cargo clippy` before `--`. Warnings are always errors.'
+        required: false
+        type: string
+        default: '--all-targets --workspace --locked'
+      nextest:
+        description: 'Run the tests with cargo-nextest. When false, `cargo test` runs them.'
+        required: false
+        type: boolean
+        default: true
+      doc-tests:
+        description: 'Also run the documentation tests (`cargo test --doc`), which nextest does not run. Needs a library target.'
+        required: false
+        type: boolean
+        default: false
+      targets:
+        description: 'Space- or comma-separated Rust targets to build or check, one job each. `aarch64-unknown-linux-gnu` builds natively on an ARM runner, `x86_64-unknown-linux-gnu` natively on x86, every other target with cross. Empty skips the job.'
+        required: false
+        type: string
+        default: ''
+      cross-command:
+        description: 'What the target jobs run: `build` (a release build) or `check`.'
+        required: false
+        type: string
+        default: 'build'
+      static-binaries:
+        description: 'Space-separated binary names that must be statically linked. Checked in each target job; needs `cross-command: build`. Empty skips the check.'
+        required: false
+        type: string
+        default: ''
+      prettier-version:
+        description: 'Prettier version for a `prettier --check .` job. Empty skips the job.'
+        required: false
+        type: string
+        default: ''
+      save-cache-ref:
+        description: 'The only ref that saves the Cargo caches. Pull requests restore them but never save, which keeps the repository under the 10 GB cache limit.'
+        required: false
+        type: string
+        default: 'refs/heads/develop'
+
+permissions:
+  contents: read
+
+env:
+  MOLD_VERSION: '2.41.0'
+  MOLD_SHA256: 'a3696680d99e692970590a178bc3a33d78d60d1c6dc9db7a11b557b02b751f5d'
+  NEXTEST_VERSION: '0.9.133'
+  CARGO_TERM_COLOR: always
+  # Incremental state is never reused across CI runs; it only bloats the cache.
+  CARGO_INCREMENTAL: '0'
+  CARGO_NET_RETRY: '10'
+  CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
+  # Line tables keep panic backtraces useful at a fraction of the build cost.
+  CARGO_PROFILE_DEV_DEBUG: line-tables-only
+  CARGO_PROFILE_TEST_DEBUG: line-tables-only
+  RUSTUP_MAX_RETRIES: '10'
+  RUST_BACKTRACE: short
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      count: ${{ steps.matrix.outputs.count }}
+
+    steps:
+      - name: Validate the inputs and build the target matrix
+        id: matrix
+        env:
+          TARGETS: ${{ inputs.targets }}
+          CROSS_COMMAND: ${{ inputs.cross-command }}
+          STATIC_BINARIES: ${{ inputs.static-binaries }}
+        run: |
+          set -euo pipefail
+          if [[ "$CROSS_COMMAND" != "build" && "$CROSS_COMMAND" != "check" ]]; then
+            echo "::error::cross-command must be build or check, not '$CROSS_COMMAND'"
+            exit 1
+          fi
+          if [[ -n "$STATIC_BINARIES" && "$CROSS_COMMAND" != "build" ]]; then
+            echo "::error::static-binaries needs cross-command: build"
+            exit 1
+          fi
+          if [[ -n "${STATIC_BINARIES// }" && -z "${TARGETS//[[:space:],]}" ]]; then
+            echo "::error::static-binaries needs at least one target"
+            exit 1
+          fi
+          if [[ ! "$STATIC_BINARIES" =~ ^[A-Za-z0-9_.\ -]*$ ]]; then
+            echo "::error::static-binaries may only hold binary names separated by spaces"
+            exit 1
+          fi
+          MATRIX=$(jq -cn --arg targets "$TARGETS" '
+            [$targets | splits("[\\s,]+") | select(length > 0)]
+            | map(
+                if test("^[a-z0-9_.-]+$") then . else error("invalid target: \(.)") end
+                | {
+                    target: .,
+                    runner: (if . == "aarch64-unknown-linux-gnu" then "ubuntu-24.04-arm" else "ubuntu-latest" end),
+                    cross: ((. == "aarch64-unknown-linux-gnu" or . == "x86_64-unknown-linux-gnu") | not)
+                  }
+              )')
+          echo "matrix={\"include\":$MATRIX}" >> "$GITHUB_OUTPUT"
+          echo "count=$(jq length <<< "$MATRIX")" >> "$GITHUB_OUTPUT"
+          echo "Targets: $MATRIX"
+
+  rust-checks:
+    name: Format, lint and test
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Read the Rust toolchain version
+        id: rust-version
+        run: |
+          VERSION=stable
+          if [ -f rust-toolchain.toml ]; then
+            VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("rust-toolchain.toml", "rb")).get("toolchain", {}).get("channel", "stable"))')
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # The action sets the rustup default, so nightly goes first and the
+      # toolchain below stays the default. Only `cargo +nightly fmt` uses it.
+      - name: Install nightly rustfmt
+        if: inputs.fmt-nightly
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: rustfmt
+
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.rust-version.outputs.version }}
+          components: clippy, rustfmt
+
+      - name: Cache the mold linker
+        uses: actions/cache@v6
+        with:
+          path: ~/.local/mold
+          key: mold-${{ env.MOLD_VERSION }}-x86_64-linux
+
+      # mold links faster. A wrapper linker keeps the caller's rustflags, and
+      # its flag goes last to beat the default lld.
+      - name: Install the mold linker
+        run: |
+          set -euo pipefail
+          if [ ! -x "$HOME/.local/mold/bin/mold" ]; then
+            mkdir -p "$HOME/.local/mold"
+            curl -fsSL -o "$RUNNER_TEMP/mold.tar.gz" \
+              "https://github.com/rui314/mold/releases/download/v${MOLD_VERSION}/mold-${MOLD_VERSION}-x86_64-linux.tar.gz"
+            echo "$MOLD_SHA256  $RUNNER_TEMP/mold.tar.gz" | sha256sum -c -
+            tar -xzf "$RUNNER_TEMP/mold.tar.gz" -C "$HOME/.local/mold" --strip-components=1
+          fi
+          printf '#!/bin/sh\nexec cc "$@" -fuse-ld=mold\n' > "$HOME/.local/mold/bin/mold-cc"
+          chmod +x "$HOME/.local/mold/bin/mold-cc"
+          echo "$HOME/.local/mold/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/mold/bin/mold" --version
+          echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=$HOME/.local/mold/bin/mold-cc" >> "$GITHUB_ENV"
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust-checks
+          cache-all-crates: 'true'
+          save-if: ${{ github.ref == inputs.save-cache-ref }}
+
+      - name: Cache cargo-nextest
+        id: cache-nextest
+        if: inputs.nextest
+        uses: actions/cache@v6
+        with:
+          path: ~/.cargo/bin/cargo-nextest
+          key: cargo-nextest-${{ env.NEXTEST_VERSION }}-x86_64-linux
+
+      - name: Install cargo-nextest
+        if: inputs.nextest && steps.cache-nextest.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.cargo/bin"
+          curl -fsSL "https://get.nexte.st/${NEXTEST_VERSION}/linux" \
+            | tar -xz -C "$HOME/.cargo/bin"
+
+      - name: Check formatting
+        env:
+          FMT_NIGHTLY: ${{ inputs.fmt-nightly }}
+        run: |
+          if [ "$FMT_NIGHTLY" = "true" ]; then
+            cargo +nightly fmt --all -- --check
+          else
+            cargo fmt --all -- --check
+          fi
+
+      - name: Run clippy
+        env:
+          CLIPPY_ARGS: ${{ inputs.clippy-args }}
+        run: |
+          # CLIPPY_ARGS is a list of arguments, so it is split on purpose.
+          # shellcheck disable=SC2086
+          cargo clippy $CLIPPY_ARGS -- -D warnings
+
+      - name: Run the tests with nextest
+        if: inputs.nextest
+        run: cargo nextest run --workspace --all-targets --locked --no-fail-fast
+
+      - name: Run the tests
+        if: ${{ !inputs.nextest }}
+        run: cargo test --workspace --all-targets --locked
+
+      - name: Run the documentation tests
+        if: inputs.doc-tests
+        run: cargo test --workspace --doc --locked
+
+  cross:
+    name: ${{ inputs.cross-command == 'check' && 'Check' || 'Build' }} ${{ matrix.target }}
+    needs: plan
+    if: needs.plan.outputs.count != '0'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Read the Rust toolchain version
+        id: rust-version
+        run: |
+          VERSION=stable
+          if [ -f rust-toolchain.toml ]; then
+            VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("rust-toolchain.toml", "rb")).get("toolchain", {}).get("channel", "stable"))')
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install the Rust toolchain with the target
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.rust-version.outputs.version }}
+          targets: ${{ matrix.target }}
+
+      - name: Install cross
+        if: matrix.cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: ${{ inputs.cross-command }}-${{ matrix.target }}
+          cache-all-crates: 'true'
+          save-if: ${{ github.ref == inputs.save-cache-ref }}
+
+      - name: ${{ inputs.cross-command == 'check' && 'Check' || 'Build' }} for ${{ matrix.target }}
+        env:
+          CARGO_BIN: ${{ matrix.cross && 'cross' || 'cargo' }}
+          CROSS_COMMAND: ${{ inputs.cross-command }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          if [ "$CROSS_COMMAND" = "check" ]; then
+            "$CARGO_BIN" check --workspace --all-targets --locked --target "$TARGET"
+          else
+            "$CARGO_BIN" build --workspace --release --locked --target "$TARGET"
+          fi
+
+      - name: Check that the binaries are statically linked
+        if: inputs.static-binaries != ''
+        env:
+          BINARIES: ${{ inputs.static-binaries }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          if [[ "$TARGET" == *-windows-* ]]; then
+            echo "::notice::Skipping the static-link check for $TARGET"
+            exit 0
+          fi
+          for binary in $BINARIES; do
+            description=$(file "target/$TARGET/release/$binary")
+            echo "$description"
+            if [[ "$description" != *"statically linked"* && "$description" != *"static-pie linked"* ]]; then
+              echo "::error::$binary for $TARGET is not statically linked"
+              exit 1
+            fi
+          done
+
+  prettier:
+    name: Prettier
+    if: inputs.prettier-version != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Cache Prettier
+        id: cache-prettier
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/prettier/node_modules
+          key: prettier-${{ runner.os }}-${{ inputs.prettier-version }}
+
+      - name: Install Prettier
+        if: steps.cache-prettier.outputs.cache-hit != 'true'
+        env:
+          PRETTIER_VERSION: ${{ inputs.prettier-version }}
+        run: |
+          npm install --prefix "$RUNNER_TEMP/prettier" --no-audit --no-fund \
+            "prettier@$PRETTIER_VERSION"
+
+      - name: Run Prettier
+        run: '"$RUNNER_TEMP/prettier/node_modules/.bin/prettier" --check .'

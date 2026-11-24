@@ -1,0 +1,455 @@
+name: Rust Release
+
+# Versions a Cargo workspace with semantic-release, builds the release
+# binaries for each target, uploads them with a `.sha256` checksum each, and
+# publishes the release. Optionally it then sends a `repository_dispatch` to
+# another repository and merges the stable branch back into the development
+# branch.
+#
+# semantic-release creates the release as a draft (`draftRelease: true` in the
+# calling repository's `.releaserc.json`), so nobody sees a release without
+# its assets. A rerun after a failed build finds the tag already in place, so
+# semantic-release makes no new release; the workflow then resumes the
+# unpublished draft at HEAD instead of skipping the build.
+#
+# The caller owns the trigger (a push to the release branches) and the
+# concurrency group. Every write goes through a GitHub App token; the
+# workflow's own GITHUB_TOKEN only reads.
+
+on:
+  workflow_call:
+    inputs:
+      app-client-id:
+        description: 'Client ID of the GitHub App that tags, uploads, publishes and backmerges'
+        required: true
+        type: string
+      app-slug:
+        description: 'Slug of the GitHub App, so the backmerge commit is attributed to its bot'
+        required: false
+        type: string
+        default: ''
+      binaries:
+        description: 'Space-separated names of the binaries to release. Each is uploaded as `<binary>-<target>`, with `.exe` appended for a Windows target, and next to a checksum file with `.sha256` appended.'
+        required: true
+        type: string
+      targets:
+        description: 'Space- or comma-separated Rust targets, one build job each. `aarch64-unknown-linux-gnu` builds natively on an ARM runner, `x86_64-unknown-linux-gnu` natively on x86, every other target with cross.'
+        required: true
+        type: string
+      release-tag-env:
+        description: 'Name of an environment variable that holds the release tag during the build, for a build script that embeds the version. For cross targets, list it under `[build.env] passthrough` in `Cross.toml`. Empty sets none.'
+        required: false
+        type: string
+        default: ''
+      static-link-check:
+        description: 'Fail when a released binary is not statically linked'
+        required: false
+        type: boolean
+        default: false
+      extra-assets:
+        description: 'Further files to upload once per release, one per line as `<path>` or `<path>=<asset name>`, for example a license file.'
+        required: false
+        type: string
+        default: ''
+      release-branches:
+        description: 'Space-separated branches allowed to release. A run on any other ref fails before it versions anything.'
+        required: false
+        type: string
+        default: 'main develop'
+      stable-branch:
+        description: 'Branch of stable releases. Only a release from it sends the dispatch and runs the backmerge.'
+        required: false
+        type: string
+        default: 'main'
+      dispatch-repository:
+        description: 'Name of a repository in the same owner to notify of a stable release with a `repository_dispatch` event. The payload carries `repo` and `tag`. Empty sends nothing.'
+        required: false
+        type: string
+        default: ''
+      dispatch-event-type:
+        description: 'Event type of the dispatch. Required with `dispatch-repository`.'
+        required: false
+        type: string
+        default: ''
+      backmerge:
+        description: 'Merge the stable branch into `backmerge-target-branch` after a run on the stable branch'
+        required: false
+        type: boolean
+        default: true
+      backmerge-target-branch:
+        description: 'Branch the backmerge merges into'
+        required: false
+        type: string
+        default: 'develop'
+    secrets:
+      app-private-key:
+        description: 'Private key of the GitHub App'
+        required: true
+    outputs:
+      tag:
+        description: 'The released tag, empty when nothing was released'
+        value: ${{ jobs.semantic-release.outputs.tag }}
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+
+    steps:
+      - name: Require a release branch
+        env:
+          RELEASE_BRANCHES: ${{ inputs.release-branches }}
+        run: |
+          for branch in $RELEASE_BRANCHES; do
+            if [ "$GITHUB_REF" = "refs/heads/$branch" ]; then
+              echo "Releasing from $branch"
+              exit 0
+            fi
+          done
+          echo "::error::$GITHUB_REF is not a release branch ($RELEASE_BRANCHES). Run the release from one of them."
+          exit 1
+
+      - name: Validate the inputs and build the target matrix
+        id: matrix
+        env:
+          TARGETS: ${{ inputs.targets }}
+          BINARIES: ${{ inputs.binaries }}
+          RELEASE_TAG_ENV: ${{ inputs.release-tag-env }}
+          DISPATCH_REPOSITORY: ${{ inputs.dispatch-repository }}
+          DISPATCH_EVENT_TYPE: ${{ inputs.dispatch-event-type }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${BINARIES// }" || ! "$BINARIES" =~ ^[A-Za-z0-9_.\ -]+$ ]]; then
+            echo "::error::binaries must hold one or more binary names separated by spaces"
+            exit 1
+          fi
+          if [[ -n "$RELEASE_TAG_ENV" && ! "$RELEASE_TAG_ENV" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+            echo "::error::release-tag-env must be a valid environment variable name"
+            exit 1
+          fi
+          if [[ -n "$DISPATCH_REPOSITORY" && ! "$DISPATCH_REPOSITORY" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+            echo "::error::dispatch-repository must be a repository name without the owner"
+            exit 1
+          fi
+          if [[ -n "$DISPATCH_REPOSITORY" && -z "$DISPATCH_EVENT_TYPE" ]]; then
+            echo "::error::dispatch-repository needs dispatch-event-type"
+            exit 1
+          fi
+          MATRIX=$(jq -cn --arg targets "$TARGETS" '
+            [$targets | splits("[\\s,]+") | select(length > 0)]
+            | map(
+                if test("^[a-z0-9_.-]+$") then . else error("invalid target: \(.)") end
+                | {
+                    target: .,
+                    runner: (if . == "aarch64-unknown-linux-gnu" then "ubuntu-24.04-arm" else "ubuntu-latest" end),
+                    cross: ((. == "aarch64-unknown-linux-gnu" or . == "x86_64-unknown-linux-gnu") | not)
+                  }
+              )')
+          if [ "$(jq length <<< "$MATRIX")" = "0" ]; then
+            echo "::error::targets must name at least one Rust target"
+            exit 1
+          fi
+          echo "matrix={\"include\":$MATRIX}" >> "$GITHUB_OUTPUT"
+          echo "Targets: $MATRIX"
+
+  semantic-release:
+    name: Semantic Versioning and Release
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions: {}
+    outputs:
+      tag: ${{ steps.release.outputs.tag || steps.draft.outputs.tag }}
+
+    steps:
+      - name: Create temporary GitHub App token
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+
+      - name: Version and release
+        id: release
+        uses: alchemaxinc/composite-toolbox/semantic-release@v1
+        with:
+          token: ${{ steps.app.outputs.token }}
+
+      # A rerun after a failed build finds the tag already in place, so
+      # semantic-release makes no release and reports no tag. The draft it
+      # made the first time is still unpublished; pick it up and finish it.
+      # Only a draft of this branch counts. Its tag is on HEAD, or on the
+      # release commit that a prepare plugin put right on top of HEAD.
+      - name: Find an unpublished release of this commit
+        id: draft
+        if: steps.release.outputs.tag == ''
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          set -euo pipefail
+          DRAFTS=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            --jq '.[] | select(.draft and .target_commitish == env.GITHUB_REF_NAME) | .tag_name')
+          HEAD_SHA=$(git rev-parse HEAD)
+          TAG=$(
+            while IFS= read -r candidate; do
+              [[ -n "$candidate" ]] || continue
+              commit=$(git rev-parse --verify --quiet "refs/tags/$candidate^{commit}") || continue
+              parent=$(git rev-parse --verify --quiet "$commit^" || true)
+              if [[ "$commit" == "$HEAD_SHA" || "$parent" == "$HEAD_SHA" ]]; then
+                echo "$candidate"
+              fi
+            done <<< "$DRAFTS" | sort -V | tail -1
+          )
+          if [ -n "$TAG" ]; then
+            echo "Resuming the unpublished release $TAG"
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # A tag without any release means an earlier run failed after tagging.
+          RELEASES=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[].tag_name')
+          for tag in $(git tag --points-at HEAD); do
+            if ! grep -qxF "$tag" <<< "$RELEASES"; then
+              echo "::error::Tag $tag has no release. Create the draft release or delete the tag, then rerun."
+              exit 1
+            fi
+          done
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: [plan, semantic-release]
+    if: needs.semantic-release.outputs.tag != ''
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: '0'
+      CARGO_NET_RETRY: '10'
+      RUSTUP_MAX_RETRIES: '10'
+      TARGET: ${{ matrix.target }}
+      TAG: ${{ needs.semantic-release.outputs.tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.semantic-release.outputs.tag }}
+          persist-credentials: false
+
+      - name: Read the Rust toolchain version
+        id: rust-version
+        run: |
+          VERSION=stable
+          if [ -f rust-toolchain.toml ]; then
+            VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("rust-toolchain.toml", "rb")).get("toolchain", {}).get("channel", "stable"))')
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install the Rust toolchain with the target
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.rust-version.outputs.version }}
+          targets: ${{ matrix.target }}
+
+      - name: Install cross
+        if: matrix.cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-${{ matrix.target }}
+
+      # The workflow runs on a branch push, so GITHUB_REF_NAME is the branch,
+      # not the tag. A build script reads the tag from this variable instead.
+      - name: Expose the release tag to the build
+        if: inputs.release-tag-env != ''
+        env:
+          RELEASE_TAG_ENV: ${{ inputs.release-tag-env }}
+        run: echo "$RELEASE_TAG_ENV=$TAG" >> "$GITHUB_ENV"
+
+      - name: Build the release binaries
+        env:
+          CARGO_BIN: ${{ matrix.cross && 'cross' || 'cargo' }}
+        run: '"$CARGO_BIN" build --workspace --release --locked --target "$TARGET"'
+
+      - name: Check that the binaries are statically linked
+        if: inputs.static-link-check
+        env:
+          BINARIES: ${{ inputs.binaries }}
+        run: |
+          set -euo pipefail
+          if [[ "$TARGET" == *-windows-* ]]; then
+            echo "::notice::Skipping the static-link check for $TARGET"
+            exit 0
+          fi
+          for binary in $BINARIES; do
+            description=$(file "target/$TARGET/release/$binary")
+            echo "$description"
+            if [[ "$description" != *"statically linked"* && "$description" != *"static-pie linked"* ]]; then
+              echo "::error::$binary for $TARGET is not statically linked"
+              exit 1
+            fi
+          done
+
+      - name: Name the assets and write the checksums
+        env:
+          BINARIES: ${{ inputs.binaries }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/assets"
+          EXT=""
+          if [[ "$TARGET" == *-windows-* ]]; then
+            EXT=".exe"
+          fi
+          for binary in $BINARIES; do
+            cp "target/$TARGET/release/$binary$EXT" "$RUNNER_TEMP/assets/$binary-$TARGET$EXT"
+            (cd "$RUNNER_TEMP/assets" && sha256sum "$binary-$TARGET$EXT" > "$binary-$TARGET$EXT.sha256")
+          done
+
+      # Uploaded by the first target job only, since the files do not depend
+      # on the target.
+      - name: Add the extra assets
+        if: inputs.extra-assets != '' && strategy.job-index == 0
+        env:
+          EXTRA_ASSETS: ${{ inputs.extra-assets }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r line; do
+            line="${line#"${line%%[![:space:]]*}"}"
+            line="${line%"${line##*[![:space:]]}"}"
+            [ -z "$line" ] && continue
+            if [[ "$line" == *=* ]]; then
+              source="${line%%=*}"
+              name="${line#*=}"
+            else
+              source="$line"
+              name=$(basename "$line")
+            fi
+            if [[ "$name" == */* || -z "$name" ]]; then
+              echo "::error::Asset name '$name' must be a plain file name"
+              exit 1
+            fi
+            cp "$source" "$RUNNER_TEMP/assets/$name"
+          done <<< "$EXTRA_ASSETS"
+
+      - name: Store the assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-assets-${{ matrix.target }}
+          path: ${{ runner.temp }}/assets/
+          if-no-files-found: error
+          retention-days: 1
+
+  # Uploads in its own job, so the App token never shares a runner with the
+  # build scripts of the calling repository.
+  upload:
+    name: Upload assets
+    needs: [semantic-release, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {}
+    env:
+      TAG: ${{ needs.semantic-release.outputs.tag }}
+
+    steps:
+      - name: Fetch the assets
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-assets-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/assets
+
+      - name: Create temporary GitHub App token
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+
+      # --clobber makes a rerun replace the assets of a resumed draft.
+      - name: Upload the release assets
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "$RUNNER_TEMP"/assets/*
+
+  publish:
+    name: Publish release
+    needs: [semantic-release, upload]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    env:
+      TAG: ${{ needs.semantic-release.outputs.tag }}
+
+    steps:
+      - name: Create temporary GitHub App token
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ github.event.repository.name }}${{ inputs.dispatch-repository != '' && github.ref == format('refs/heads/{0}', inputs.stable-branch) && format(',{0}', inputs.dispatch-repository) || '' }}
+          client-id: ${{ inputs.app-client-id }}
+          private-key: ${{ secrets.app-private-key }}
+
+      - name: Publish the draft release
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false
+
+      - name: Notify ${{ inputs.dispatch-repository }} of the stable release
+        if: inputs.dispatch-repository != '' && github.ref == format('refs/heads/{0}', inputs.stable-branch)
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          DISPATCH_REPOSITORY: ${{ inputs.dispatch-repository }}
+          EVENT_TYPE: ${{ inputs.dispatch-event-type }}
+        run: |
+          gh api \
+            --method POST \
+            "repos/$OWNER/$DISPATCH_REPOSITORY/dispatches" \
+            -f "event_type=$EVENT_TYPE" \
+            -f "client_payload[repo]=$REPO" \
+            -f "client_payload[tag]=$TAG"
+
+  # Runs after a release and also when the stable branch had nothing to
+  # release, in which case the asset jobs are skipped. A failed or cancelled
+  # asset job blocks it, so develop never receives an unpublished release.
+  backmerge:
+    name: Backmerge
+    needs: [semantic-release, build, upload, publish]
+    if: >-
+      !cancelled() &&
+      inputs.backmerge &&
+      github.ref == format('refs/heads/{0}', inputs.stable-branch) &&
+      needs.semantic-release.result == 'success' &&
+      contains(fromJSON('["success", "skipped"]'), needs.build.result) &&
+      contains(fromJSON('["success", "skipped"]'), needs.upload.result) &&
+      contains(fromJSON('["success", "skipped"]'), needs.publish.result)
+    permissions: {}
+    uses: alchemaxinc/composite-toolbox/.github/workflows/backmerge.yml@v1
+    with:
+      app-client-id: ${{ inputs.app-client-id }}
+      app-slug: ${{ inputs.app-slug }}
+      source-branch: ${{ inputs.stable-branch }}
+      target-branch: ${{ inputs.backmerge-target-branch }}
+    secrets:
+      app-private-key: ${{ secrets.app-private-key }}
