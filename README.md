@@ -42,7 +42,7 @@ gate job with that name next to the job that calls the shared workflow, as the
 examples below show.
 
 Every job in these workflows sets least-privilege `permissions` and a
-`timeout-minutes`, and third-party actions are pinned to commit SHAs. Writes
+`timeout-minutes`. Writes
 go through a GitHub App token, so the caller's `GITHUB_TOKEN` needs no more
 than `contents: read`. The calling workflow owns `concurrency`.
 

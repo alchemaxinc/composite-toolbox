@@ -37,7 +37,7 @@ jobs:
     steps:
       - name: Cache commitlint
         id: cache-commitlint
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache@v6
         with:
           path: ${{ runner.temp }}/commitlint/node_modules
           key: commitlint-${{ runner.os }}-${{ env.COMMITLINT_VERSION }}
