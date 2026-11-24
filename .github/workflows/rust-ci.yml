@@ -142,25 +142,24 @@ jobs:
         run: |
           VERSION=stable
           if [ -f rust-toolchain.toml ]; then
-            VERSION=$(grep '^channel' rust-toolchain.toml | sed 's/.*"\(.*\)".*/\1/')
+            VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("rust-toolchain.toml", "rb")).get("toolchain", {}).get("channel", "stable"))')
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Install the Rust toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ steps.rust-version.outputs.version }}
-          components: clippy, rustfmt
-
-      # `rust-toolchain.toml` still pins every other step to its release,
-      # because a toolchain file outranks the rustup default this step sets.
-      # Only the explicit `cargo +nightly fmt` below reaches nightly.
+      # The action sets the rustup default, so nightly goes first and the
+      # toolchain below stays the default. Only `cargo +nightly fmt` uses it.
       - name: Install nightly rustfmt
         if: inputs.fmt-nightly
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: nightly
           components: rustfmt
+
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ steps.rust-version.outputs.version }}
+          components: clippy, rustfmt
 
       - name: Cache the mold linker
         uses: actions/cache@v6
@@ -258,7 +257,7 @@ jobs:
         run: |
           VERSION=stable
           if [ -f rust-toolchain.toml ]; then
-            VERSION=$(grep '^channel' rust-toolchain.toml | sed 's/.*"\(.*\)".*/\1/')
+            VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("rust-toolchain.toml", "rb")).get("toolchain", {}).get("channel", "stable"))')
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 

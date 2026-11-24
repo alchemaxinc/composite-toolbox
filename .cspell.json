@@ -17,7 +17,8 @@
     "armv",
     "musleabihf",
     "nextest",
-    "rustfmt"
+    "rustfmt",
+    "tomllib"
   ],
   "files": [
     "*.md",

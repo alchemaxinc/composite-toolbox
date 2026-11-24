@@ -29,7 +29,7 @@ on:
         type: string
         default: ''
       binaries:
-        description: 'Space-separated names of the binaries to release. Each is uploaded as `<binary>-<target>` with a `<binary>-<target>.sha256` checksum.'
+        description: 'Space-separated names of the binaries to release. Each is uploaded as `<binary>-<target>`, with `.exe` appended for a Windows target, and next to a checksum file with `.sha256` appended.'
         required: true
         type: string
       targets:
@@ -219,6 +219,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
+          ref: ${{ needs.semantic-release.outputs.tag }}
           persist-credentials: false
 
       - name: Read the Rust toolchain version
@@ -226,7 +227,7 @@ jobs:
         run: |
           VERSION=stable
           if [ -f rust-toolchain.toml ]; then
-            VERSION=$(grep '^channel' rust-toolchain.toml | sed 's/.*"\(.*\)".*/\1/')
+            VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("rust-toolchain.toml", "rb")).get("toolchain", {}).get("channel", "stable"))')
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
@@ -281,9 +282,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p assets
+          EXT=""
+          if [[ "$TARGET" == *-windows-* ]]; then
+            EXT=".exe"
+          fi
           for binary in $BINARIES; do
-            cp "target/$TARGET/release/$binary" "assets/$binary-$TARGET"
-            (cd assets && sha256sum "$binary-$TARGET" > "$binary-$TARGET.sha256")
+            cp "target/$TARGET/release/$binary$EXT" "assets/$binary-$TARGET$EXT"
+            (cd assets && sha256sum "$binary-$TARGET$EXT" > "$binary-$TARGET$EXT.sha256")
           done
 
       # Uploaded by the first target job only, since the files do not depend
