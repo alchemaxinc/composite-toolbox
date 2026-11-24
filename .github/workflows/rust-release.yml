@@ -47,7 +47,7 @@ on:
         type: boolean
         default: false
       extra-assets:
-        description: 'Further files to upload once per release, one per line as `<path>` or `<path>=<asset name>`, for example an OpenAPI spec.'
+        description: 'Further files to upload once per release, one per line as `<path>` or `<path>=<asset name>`, for example a license file.'
         required: false
         type: string
         default: ''
@@ -67,10 +67,10 @@ on:
         type: string
         default: ''
       dispatch-event-type:
-        description: 'Event type of the dispatch'
+        description: 'Event type of the dispatch. Required with `dispatch-repository`.'
         required: false
         type: string
-        default: 'upstream-released'
+        default: ''
       backmerge:
         description: 'Merge the stable branch into `backmerge-target-branch` after a run on the stable branch'
         required: false
@@ -123,6 +123,7 @@ jobs:
           BINARIES: ${{ inputs.binaries }}
           RELEASE_TAG_ENV: ${{ inputs.release-tag-env }}
           DISPATCH_REPOSITORY: ${{ inputs.dispatch-repository }}
+          DISPATCH_EVENT_TYPE: ${{ inputs.dispatch-event-type }}
         run: |
           set -euo pipefail
           if [[ -z "${BINARIES// }" || ! "$BINARIES" =~ ^[A-Za-z0-9_.\ -]+$ ]]; then
@@ -135,6 +136,10 @@ jobs:
           fi
           if [[ -n "$DISPATCH_REPOSITORY" && ! "$DISPATCH_REPOSITORY" =~ ^[A-Za-z0-9_.-]+$ ]]; then
             echo "::error::dispatch-repository must be a repository name without the owner"
+            exit 1
+          fi
+          if [[ -n "$DISPATCH_REPOSITORY" && -z "$DISPATCH_EVENT_TYPE" ]]; then
+            echo "::error::dispatch-repository needs dispatch-event-type"
             exit 1
           fi
           MATRIX=$(jq -cn --arg targets "$TARGETS" '
@@ -207,7 +212,16 @@ jobs:
           if [ -n "$TAG" ]; then
             echo "Resuming the unpublished release $TAG"
             echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          # A tag without any release means an earlier run failed after tagging.
+          RELEASES=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '.[].tag_name')
+          for tag in $(git tag --points-at HEAD); do
+            if ! grep -qxF "$tag" <<< "$RELEASES"; then
+              echo "::error::Tag $tag has no release. Create the draft release or delete the tag, then rerun."
+              exit 1
+            fi
+          done
 
   build-and-upload:
     name: Build ${{ matrix.target }}
@@ -280,6 +294,10 @@ jobs:
           BINARIES: ${{ inputs.binaries }}
         run: |
           set -euo pipefail
+          if [[ "$TARGET" == *-windows-* ]]; then
+            echo "::notice::Skipping the static-link check for $TARGET"
+            exit 0
+          fi
           for binary in $BINARIES; do
             description=$(file "target/$TARGET/release/$binary")
             echo "$description"
@@ -294,14 +312,14 @@ jobs:
           BINARIES: ${{ inputs.binaries }}
         run: |
           set -euo pipefail
-          mkdir -p assets
+          mkdir -p "$RUNNER_TEMP/assets"
           EXT=""
           if [[ "$TARGET" == *-windows-* ]]; then
             EXT=".exe"
           fi
           for binary in $BINARIES; do
-            cp "target/$TARGET/release/$binary$EXT" "assets/$binary-$TARGET$EXT"
-            (cd assets && sha256sum "$binary-$TARGET$EXT" > "$binary-$TARGET$EXT.sha256")
+            cp "target/$TARGET/release/$binary$EXT" "$RUNNER_TEMP/assets/$binary-$TARGET$EXT"
+            (cd "$RUNNER_TEMP/assets" && sha256sum "$binary-$TARGET$EXT" > "$binary-$TARGET$EXT.sha256")
           done
 
       # Uploaded by the first target job only, since the files do not depend
@@ -327,7 +345,7 @@ jobs:
               echo "::error::Asset name '$name' must be a plain file name"
               exit 1
             fi
-            cp "$source" "assets/$name"
+            cp "$source" "$RUNNER_TEMP/assets/$name"
           done <<< "$EXTRA_ASSETS"
 
       - name: Create temporary GitHub App token
@@ -343,7 +361,7 @@ jobs:
       - name: Upload the release assets
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
-        run: gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber assets/*
+        run: gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "$RUNNER_TEMP"/assets/*
 
   publish:
     name: Publish release
@@ -360,7 +378,7 @@ jobs:
         uses: actions/create-github-app-token@v3
         with:
           owner: ${{ github.repository_owner }}
-          repositories: ${{ github.event.repository.name }}${{ inputs.dispatch-repository != '' && format(',{0}', inputs.dispatch-repository) || '' }}
+          repositories: ${{ github.event.repository.name }}${{ inputs.dispatch-repository != '' && github.ref == format('refs/heads/{0}', inputs.stable-branch) && format(',{0}', inputs.dispatch-repository) || '' }}
           client-id: ${{ inputs.app-client-id }}
           private-key: ${{ secrets.app-private-key }}
 
