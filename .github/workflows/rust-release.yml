@@ -223,7 +223,7 @@ jobs:
             fi
           done
 
-  build-and-upload:
+  build:
     name: Build ${{ matrix.target }}
     needs: [plan, semantic-release]
     if: needs.semantic-release.outputs.tag != ''
@@ -348,6 +348,33 @@ jobs:
             cp "$source" "$RUNNER_TEMP/assets/$name"
           done <<< "$EXTRA_ASSETS"
 
+      - name: Store the assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-assets-${{ matrix.target }}
+          path: ${{ runner.temp }}/assets/
+          if-no-files-found: error
+          retention-days: 1
+
+  # Uploads in its own job, so the App token never shares a runner with the
+  # build scripts of the calling repository.
+  upload:
+    name: Upload assets
+    needs: [semantic-release, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {}
+    env:
+      TAG: ${{ needs.semantic-release.outputs.tag }}
+
+    steps:
+      - name: Fetch the assets
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-assets-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/assets
+
       - name: Create temporary GitHub App token
         id: app
         uses: actions/create-github-app-token@v3
@@ -365,7 +392,7 @@ jobs:
 
   publish:
     name: Publish release
-    needs: [semantic-release, build-and-upload]
+    needs: [semantic-release, upload]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
@@ -408,13 +435,14 @@ jobs:
   # asset job blocks it, so develop never receives an unpublished release.
   backmerge:
     name: Backmerge
-    needs: [semantic-release, build-and-upload, publish]
+    needs: [semantic-release, build, upload, publish]
     if: >-
       !cancelled() &&
       inputs.backmerge &&
       github.ref == format('refs/heads/{0}', inputs.stable-branch) &&
       needs.semantic-release.result == 'success' &&
-      contains(fromJSON('["success", "skipped"]'), needs.build-and-upload.result) &&
+      contains(fromJSON('["success", "skipped"]'), needs.build.result) &&
+      contains(fromJSON('["success", "skipped"]'), needs.upload.result) &&
       contains(fromJSON('["success", "skipped"]'), needs.publish.result)
     permissions: {}
     uses: alchemaxinc/composite-toolbox/.github/workflows/backmerge.yml@v1
