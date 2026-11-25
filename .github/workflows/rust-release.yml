@@ -29,7 +29,7 @@ on:
         type: string
         default: ''
       binaries:
-        description: 'Space-separated names of the binaries to release. Each is uploaded as `<binary>-<target>`, with `.exe` appended for a Windows target, and next to a checksum file with `.sha256` appended.'
+        description: 'Space-separated names of the binaries to release. Only these are built, with one `--bin` each, so every one must belong to a default member of the workspace. Each is uploaded as `<binary>-<target>`, with `.exe` appended for a Windows target, and next to a checksum file with `.sha256` appended.'
         required: true
         type: string
       targets:
@@ -283,10 +283,20 @@ jobs:
           RELEASE_TAG_ENV: ${{ inputs.release-tag-env }}
         run: echo "$RELEASE_TAG_ENV=$TAG" >> "$GITHUB_ENV"
 
+      # Builds only the released binaries, so a workspace member that ships
+      # nothing, such as a local tool, is neither compiled nor allowed to add
+      # features to the shared dependencies.
       - name: Build the release binaries
         env:
           CARGO_BIN: ${{ matrix.cross && 'cross' || 'cargo' }}
-        run: '"$CARGO_BIN" build --workspace --release --locked --target "$TARGET"'
+          BINARIES: ${{ inputs.binaries }}
+        run: |
+          set -euo pipefail
+          BIN_ARGS=()
+          for binary in $BINARIES; do
+            BIN_ARGS+=(--bin "$binary")
+          done
+          "$CARGO_BIN" build --release --locked --target "$TARGET" "${BIN_ARGS[@]}"
 
       - name: Check that the binaries are statically linked
         if: inputs.static-link-check
