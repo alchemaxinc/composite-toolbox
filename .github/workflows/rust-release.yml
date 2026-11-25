@@ -358,19 +358,23 @@ jobs:
             cp "$source" "$RUNNER_TEMP/assets/$name"
           done <<< "$EXTRA_ASSETS"
 
+      # A rerun of the failed targets downloads the assets that the passing
+      # targets stored in an earlier attempt, so they must outlive the time it
+      # takes to notice and fix a failed build. A week covers that; the
+      # upload job refuses to publish if any of them have expired anyway.
       - name: Store the assets
         uses: actions/upload-artifact@v7
         with:
           name: release-assets-${{ matrix.target }}
           path: ${{ runner.temp }}/assets/
           if-no-files-found: error
-          retention-days: 1
+          retention-days: 7
 
   # Uploads in its own job, so the App token never shares a runner with the
   # build scripts of the calling repository.
   upload:
     name: Upload assets
-    needs: [semantic-release, build]
+    needs: [plan, semantic-release, build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions: {}
@@ -384,6 +388,35 @@ jobs:
           pattern: release-assets-*
           merge-multiple: true
           path: ${{ runner.temp }}/assets
+
+      # The pattern above takes whatever artifacts still exist. When a rerun
+      # finds that another target's artifact has expired, this stops the
+      # release here, as a draft, before it is published or dispatched.
+      - name: Check that every expected asset is present
+        env:
+          MATRIX: ${{ needs.plan.outputs.matrix }}
+          BINARIES: ${{ inputs.binaries }}
+        run: |
+          set -euo pipefail
+          MISSING=()
+          for target in $(jq -r '.include[].target' <<< "$MATRIX"); do
+            EXT=""
+            if [[ "$target" == *-windows-* ]]; then
+              EXT=".exe"
+            fi
+            for binary in $BINARIES; do
+              for name in "$binary-$target$EXT" "$binary-$target$EXT.sha256"; do
+                if [ ! -f "$RUNNER_TEMP/assets/$name" ]; then
+                  MISSING+=("$name")
+                fi
+              done
+            done
+          done
+          if [ "${#MISSING[@]}" -gt 0 ]; then
+            echo "::error::Missing release assets, so the release stays a draft: ${MISSING[*]}. Rerun all jobs to rebuild every target."
+            exit 1
+          fi
+          echo "All $(jq '.include | length' <<< "$MATRIX") targets have their assets"
 
       - name: Create temporary GitHub App token
         id: app
