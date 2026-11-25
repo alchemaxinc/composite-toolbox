@@ -29,7 +29,7 @@ on:
         type: string
         default: ''
       binaries:
-        description: 'Space-separated names of the binaries to release. Only these are built, with one `--bin` each, so every one must belong to a default member of the workspace. Each is uploaded as `<binary>-<target>`, with `.exe` appended for a Windows target, and next to a checksum file with `.sha256` appended.'
+        description: 'Space-separated names of the binaries to release. Only these are built, with one `--bin` each, together with the workspace packages that own them, so features are resolved for those packages alone. Each is uploaded as `<binary>-<target>`, with `.exe` appended for a Windows target, and next to a checksum file with `.sha256` appended.'
         required: true
         type: string
       targets:
@@ -283,20 +283,35 @@ jobs:
           RELEASE_TAG_ENV: ${{ inputs.release-tag-env }}
         run: echo "$RELEASE_TAG_ENV=$TAG" >> "$GITHUB_ENV"
 
-      # Builds only the released binaries, so a workspace member that ships
-      # nothing, such as a local tool, is neither compiled nor allowed to add
-      # features to the shared dependencies.
+      # Builds only the released binaries and selects the packages that own
+      # them. `--bin` alone filters the targets but still resolves features
+      # for every default member, so a workspace member that ships nothing,
+      # such as a local tool, could add features to the shared dependencies.
       - name: Build the release binaries
         env:
           CARGO_BIN: ${{ matrix.cross && 'cross' || 'cargo' }}
           BINARIES: ${{ inputs.binaries }}
         run: |
           set -euo pipefail
+          METADATA=$(cargo metadata --format-version 1 --no-deps --locked)
+          declare -A SEEN=()
+          PACKAGE_ARGS=()
           BIN_ARGS=()
           for binary in $BINARIES; do
+            owners=$(jq -r --arg bin "$binary" '
+              [.packages[] | select(any(.targets[]; .name == $bin and (.kind | index("bin"))))
+                | .name] | unique | .[]' <<< "$METADATA")
+            if [ "$(grep -c . <<< "$owners" || true)" != "1" ]; then
+              echo "::error::Binary $binary must belong to exactly one workspace package, found: ${owners:-none}"
+              exit 1
+            fi
+            if [ -z "${SEEN[$owners]:-}" ]; then
+              SEEN[$owners]=1
+              PACKAGE_ARGS+=(--package "$owners")
+            fi
             BIN_ARGS+=(--bin "$binary")
           done
-          "$CARGO_BIN" build --release --locked --target "$TARGET" "${BIN_ARGS[@]}"
+          "$CARGO_BIN" build --release --locked --target "$TARGET" "${PACKAGE_ARGS[@]}" "${BIN_ARGS[@]}"
 
       - name: Check that the binaries are statically linked
         if: inputs.static-link-check
