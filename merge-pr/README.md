@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Enable auto-merge
-        uses: alchemaxinc/composite-toolbox/merge-pr@v1.26.0
+        uses: alchemaxinc/composite-toolbox/merge-pr@v1.26.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           pull-request-number: ${{ github.event.pull_request.number }}
