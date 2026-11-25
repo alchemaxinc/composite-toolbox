@@ -20,27 +20,36 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: ${{ github.event.repository.name }}
 
+      # update-deps v2 updates every external action that has a semver-like
+      # tag. It skips refs that are not semver-like, such as SHAs and branches.
+      # dtolnay/rust-toolchain@master is pinned to a branch on purpose, so it
+      # is also excluded explicitly. The globs use Python pathlib syntax, which
+      # does not support brace expansion such as '*.{yml,yaml}'.
       - name: Update GitHub Actions
-        uses: alchemaxinc/update-deps/actions@v1
+        uses: alchemaxinc/update-deps/actions@v2
         with:
           token: ${{ steps.app.outputs.token }}
           auto-merge: 'true'
           base-branch: 'main'
-          prefixes: 'actions'
-          file-glob: '.github/**/*.{yml,yaml}'
+          file-glob: '.github/**/*.y*ml'
+          # dtolnay/rust-toolchain is pinned to @master on purpose: its branches name the toolchain, and
+          # the repo also has a v1 release that must never replace them.
+          excluded-actions: 'dtolnay/rust-toolchain'
           branch-prefix: 'update-actions'
           pr-title: 'chore: Update GitHub Actions'
           commit-message: 'chore: update github actions'
 
       - name: Update GitHub Actions (files in top-level non-hidden folders)
-        uses: alchemaxinc/update-deps/actions@v1
+        uses: alchemaxinc/update-deps/actions@v2
         with:
           token: ${{ steps.app.outputs.token }}
           base-branch: 'main'
           branch-prefix: 'update-action-manifests'
           pr-title: 'fix: update `action.yml` files'
           commit-message: 'fix: update `action.yml` files'
-          file-glob: '[!.]*/action.{yml,yaml}'
-          check-files: '[!.]*/action.{yml,yaml}'
-          prefixes: 'actions,hashicorp'
+          file-glob: '[!.]*/action.y*ml'
+          check-files: '[!.]*/action.y*ml'
+          # dtolnay/rust-toolchain is pinned to @master on purpose: its branches name the toolchain, and
+          # the repo also has a v1 release that must never replace them.
+          excluded-actions: 'dtolnay/rust-toolchain'
           auto-merge: 'true'
