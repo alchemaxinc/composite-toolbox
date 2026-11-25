@@ -32,6 +32,8 @@ jobs:
           auto-merge: 'true'
           base-branch: 'main'
           file-glob: '.github/**/*.y*ml'
+          # dtolnay/rust-toolchain is pinned to @master on purpose: its branches name the toolchain, and
+          # the repo also has a v1 release that must never replace them.
           excluded-actions: 'dtolnay/rust-toolchain'
           branch-prefix: 'update-actions'
           pr-title: 'chore: Update GitHub Actions'
@@ -47,5 +49,7 @@ jobs:
           commit-message: 'fix: update `action.yml` files'
           file-glob: '[!.]*/action.y*ml'
           check-files: '[!.]*/action.y*ml'
+          # dtolnay/rust-toolchain is pinned to @master on purpose: its branches name the toolchain, and
+          # the repo also has a v1 release that must never replace them.
           excluded-actions: 'dtolnay/rust-toolchain'
           auto-merge: 'true'
