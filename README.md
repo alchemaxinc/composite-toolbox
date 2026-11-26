@@ -188,7 +188,8 @@ With `signing-key` (an ed25519 private key in PEM, from
 it with the public key:
 
 ```sh
-openssl pkeyutl -verify -rawin -pubin -inkey pub.pem -in <asset> -sigfile <asset>.sig
+asset=my-tool-x86_64-unknown-linux-gnu # the downloaded binary
+openssl pkeyutl -verify -rawin -pubin -inkey pub.pem -in "$asset" -sigfile "$asset.sig"
 ```
 
 ## 🤝 Contributing
