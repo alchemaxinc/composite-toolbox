@@ -43,7 +43,7 @@ than `contents: read`. The calling workflow owns `concurrency`.
 - **[backmerge](./.github/workflows/backmerge.yml)** - Merge `main` into `develop` and push. On a merge conflict, open a pull request from `main` into `develop` instead of failing silently.
 - **[pr-title-lint](./.github/workflows/pr-title-lint.yml)** - Lint the pull request title against Conventional Commits with a pinned commitlint and one shared config (Git merge titles ignored, lines up to 150 characters).
 - **[rust-ci](./.github/workflows/rust-ci.yml)** - Check a Cargo workspace: rustfmt (on nightly by default, for unstable `.rustfmt.toml` options), clippy with `-D warnings`, the tests with cargo-nextest, and optionally a build or check per cross target, a static-link check and a Prettier check.
-- **[rust-release](./.github/workflows/rust-release.yml)** - Release a Cargo workspace: semantic-release creates a draft, each target builds the binaries with a `.sha256` checksum, a separate job uploads them so the App token never meets the build, and the draft is published. A rerun resumes an unpublished draft. Optionally it sends a `repository_dispatch` of a given event type on a stable release, and it merges `main` back into `develop`.
+- **[rust-release](./.github/workflows/rust-release.yml)** - Release a Cargo workspace: semantic-release creates a draft, each target builds the binaries with a `.sha256` checksum, a separate job signs them when `signing-key` is set and uploads them so the App token never meets the build, and the draft is published. A rerun resumes an unpublished draft. Optionally it sends a `repository_dispatch` of a given event type on a stable release, and it merges `main` back into `develop`.
 
 Example: the weekly production pull request. `prod-pr` and `backmerge` both
 take the GitHub App client ID as the `app-client-id` input and its private
@@ -179,6 +179,17 @@ jobs:
       dispatch-event-type: release-published
     secrets:
       app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+      signing-key: ${{ secrets.RELEASE_SIGNING_KEY }} # optional
+```
+
+With `signing-key` (an ed25519 private key in PEM, from
+`openssl genpkey -algorithm ed25519`), each binary asset gets a
+`<asset>.sig` with the raw 64-byte ed25519 signature over the binary. Verify
+it with the public key:
+
+```sh
+asset=my-tool-x86_64-unknown-linux-gnu # the downloaded binary
+openssl pkeyutl -verify -rawin -pubin -inkey pub.pem -in "$asset" -sigfile "$asset.sig"
 ```
 
 ## 🤝 Contributing

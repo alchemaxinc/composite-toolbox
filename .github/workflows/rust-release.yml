@@ -1,8 +1,9 @@
 name: Rust Release
 
 # Versions a Cargo workspace with semantic-release, builds the release
-# binaries for each target, uploads them with a `.sha256` checksum each, and
-# publishes the release. Optionally it then sends a `repository_dispatch` to
+# binaries for each target, uploads them with a `.sha256` checksum each (and a
+# `.sig` ed25519 signature each when `signing-key` is set), and publishes the
+# release. Optionally it then sends a `repository_dispatch` to
 # another repository and merges the stable branch back into the development
 # branch.
 #
@@ -29,7 +30,7 @@ on:
         type: string
         default: ''
       binaries:
-        description: 'Space-separated names of the binaries to release. Only these are built, with one `--bin` each, together with the workspace packages that own them, so features are resolved for those packages alone. Each is uploaded as `<binary>-<target>`, with `.exe` appended for a Windows target, and next to a checksum file with `.sha256` appended.'
+        description: 'Space-separated names of the binaries to release. Only these are built, with one `--bin` each, together with the workspace packages that own them, so features are resolved for those packages alone. Each is uploaded as `<binary>-<target>`, with `.exe` appended for a Windows target, and next to a checksum file with `.sha256` appended and, with `signing-key`, a signature file with `.sig` appended.'
         required: true
         type: string
       targets:
@@ -85,6 +86,9 @@ on:
       app-private-key:
         description: 'Private key of the GitHub App'
         required: true
+      signing-key:
+        description: 'Ed25519 private key in PEM (`openssl genpkey -algorithm ed25519`). When set, each released binary gets a `<asset>.sig` with the raw 64-byte ed25519 signature over its bytes. The extra assets are not signed. Empty signs nothing.'
+        required: false
     outputs:
       tag:
         description: 'The released tag, empty when nothing was released'
@@ -408,18 +412,21 @@ jobs:
       # finds that another target's artifact has expired, this stops the
       # release here, as a draft, before it is published or dispatched.
       - name: Check that every expected asset is present
+        id: assets
         env:
           MATRIX: ${{ needs.plan.outputs.matrix }}
           BINARIES: ${{ inputs.binaries }}
         run: |
           set -euo pipefail
           MISSING=()
+          BINARY_ASSETS=()
           for target in $(jq -r '.include[].target' <<< "$MATRIX"); do
             EXT=""
             if [[ "$target" == *-windows-* ]]; then
               EXT=".exe"
             fi
             for binary in $BINARIES; do
+              BINARY_ASSETS+=("$binary-$target$EXT")
               for name in "$binary-$target$EXT" "$binary-$target$EXT.sha256"; do
                 if [ ! -f "$RUNNER_TEMP/assets/$name" ]; then
                   MISSING+=("$name")
@@ -431,7 +438,39 @@ jobs:
             echo "::error::Missing release assets, so the release stays a draft: ${MISSING[*]}. Rerun all jobs to rebuild every target."
             exit 1
           fi
+          echo "binary-assets=${BINARY_ASSETS[*]}" >> "$GITHUB_OUTPUT"
           echo "All $(jq '.include | length' <<< "$MATRIX") targets have their assets"
+
+      # Signs here rather than in the build, so the key never shares a runner
+      # with the build scripts of the calling repository.
+      - name: Sign the binaries
+        env:
+          SIGNING_KEY: ${{ secrets.signing-key }}
+          BINARY_ASSETS: ${{ steps.assets.outputs.binary-assets }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SIGNING_KEY" ]; then
+            echo "No signing-key, so the binaries stay unsigned"
+            exit 0
+          fi
+          KEY_FILE=$(umask 077 && mktemp "$RUNNER_TEMP/signing-key.XXXXXX")
+          trap 'rm -f "$KEY_FILE"' EXIT
+          printf '%s\n' "$SIGNING_KEY" > "$KEY_FILE"
+          KEY_TYPE=$(openssl pkey -in "$KEY_FILE" -noout -text_pub 2>/dev/null || true)
+          if [[ "$KEY_TYPE" != "ED25519 Public-Key:"* ]]; then
+            echo "::error::signing-key must be an ed25519 private key in PEM"
+            exit 1
+          fi
+          for asset in $BINARY_ASSETS; do
+            path="$RUNNER_TEMP/assets/$asset"
+            openssl pkeyutl -sign -rawin -inkey "$KEY_FILE" -in "$path" -out "$path.sig"
+            size=$(stat -c %s "$path.sig")
+            if [ "$size" != "64" ]; then
+              echo "::error::The signature of $asset has $size bytes instead of 64"
+              exit 1
+            fi
+            echo "Signed $asset"
+          done
 
       - name: Create temporary GitHub App token
         id: app
