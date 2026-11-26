@@ -25,7 +25,7 @@ are welcome.
 ## 🔁 Reusable Workflows
 
 These workflows are called as jobs with
-`uses: alchemaxinc/composite-toolbox/.github/workflows/<name>.yml@v1.26.1`. The
+`uses: alchemaxinc/composite-toolbox/.github/workflows/<name>.yml@v1.27.0`. The
 calling workflow owns the trigger (for example, a `pull_request` event or a
 `schedule`). Secrets are passed by name; the workflows do not use
 `secrets: inherit`.
@@ -58,7 +58,7 @@ on:
 
 jobs:
   prod-pr:
-    uses: alchemaxinc/composite-toolbox/.github/workflows/prod-pr.yml@v1.26.1
+    uses: alchemaxinc/composite-toolbox/.github/workflows/prod-pr.yml@v1.27.0
     with:
       app-client-id: ${{ vars.APP_CLIENT_ID }}
     secrets:
@@ -82,7 +82,7 @@ concurrency:
 
 jobs:
   lint:
-    uses: alchemaxinc/composite-toolbox/.github/workflows/pr-title-lint.yml@v1.26.1
+    uses: alchemaxinc/composite-toolbox/.github/workflows/pr-title-lint.yml@v1.27.0
 
   pr-title:
     name: pr-title
@@ -117,7 +117,7 @@ concurrency:
 
 jobs:
   rust:
-    uses: alchemaxinc/composite-toolbox/.github/workflows/rust-ci.yml@v1.26.1
+    uses: alchemaxinc/composite-toolbox/.github/workflows/rust-ci.yml@v1.27.0
     with:
       targets: x86_64-unknown-linux-musl
       static-binaries: my-binary
@@ -168,7 +168,7 @@ concurrency:
 
 jobs:
   release:
-    uses: alchemaxinc/composite-toolbox/.github/workflows/rust-release.yml@v1.26.1
+    uses: alchemaxinc/composite-toolbox/.github/workflows/rust-release.yml@v1.27.0
     with:
       app-client-id: ${{ vars.APP_CLIENT_ID }}
       app-slug: my-github-app

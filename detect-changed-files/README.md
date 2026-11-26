@@ -27,7 +27,7 @@ jobs:
           fetch-depth: 0
 
       - name: Detect changed files
-        uses: alchemaxinc/composite-toolbox/detect-changed-files@v1.26.1
+        uses: alchemaxinc/composite-toolbox/detect-changed-files@v1.27.0
         id: detect
         with:
           files: '*.go go.mod go.sum'
