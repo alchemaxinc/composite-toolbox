@@ -16,7 +16,14 @@
     "taiki",
     "nextest",
     "rustfmt",
-    "tomllib"
+    "tomllib",
+    "genpkey",
+    "inkey",
+    "noout",
+    "pkey",
+    "pkeyutl",
+    "pubin",
+    "rawin"
   ],
   "files": [
     "*.md",
